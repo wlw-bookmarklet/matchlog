@@ -574,7 +574,7 @@ function hyouji(){
 	
 	// 項目情報
 	addNode("マッチング回数", "0" + "回", 0, "cast");
-	addNode("エンカウント率", "0" + "%", 1, "cast");
+	addNode("登場率", "0" + "%", 1, "cast");
 	addNode("↓スキル採用率", "", 2, "cast");
 	
 	// スキル枠確保
