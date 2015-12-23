@@ -28,3 +28,8 @@ javascript:(function(d,s){s=d.createElement('script');s.src='https://rawgit.com/
 
 連絡先ツイッター：<br>
 https://twitter.com/wlw_honkideya
+
+修正履歴：<br>
+2015/12/23 マッチングしたキャストのアシストカードとソウルカードが、正しく集計されない可能性がある点を修正。
+
+
