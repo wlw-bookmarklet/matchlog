@@ -933,10 +933,10 @@ function match_cast_add(ary_no){
 				ary_tmp[4] = [result_battle[ary_no][26][match_cnt][4][1], result_battle[ary_no][26][match_cnt][4][2], result_battle[ary_no][26][match_cnt][4][3]]
 				ary_tmp[5] = [1, 1, 1];
 				// アシスト
-				ary_tmp[6] = result_battle[ary_no][26][match_cnt][5];
+				ary_tmp[6] = [result_battle[ary_no][26][match_cnt][5][0], result_battle[ary_no][26][match_cnt][5][1], result_battle[ary_no][26][match_cnt][5][2]];
 				ary_tmp[7] = [1, 1, 1];
 				// ソウル
-				ary_tmp[8] = result_battle[ary_no][26][match_cnt][6];
+				ary_tmp[8] = [result_battle[ary_no][26][match_cnt][6][0]];
 				ary_tmp[9] = [1];
 				match_cast_result[match_cast_cnt] = ary_tmp;
 				// キャストの登録番号を進める
