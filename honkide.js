@@ -113,6 +113,11 @@ var icon_height = 0;
 var margin_bot = 0;
 
 // 表示用
+var getcast_sum = 0;
+var getcast_other = 0;
+var imgNode_cast = [];
+var imgNode_skill = [];
+var imgNode_other = [];
 var innerNode = null;
 var skillNode = document.createElement("h2");
 var castNode = document.createElement("h2");
@@ -450,14 +455,14 @@ function hyouji(){
 	
 	// 使用キャスト画像を表示
 	for(var cnt=0; cnt < cast_cnt; cnt++){
-		var imgNode = document.createElement("img");
-		imgNode.src = cast_result[cnt][0];
-		imgNode.width = icon_width;
-		imgNode.height = icon_height;
+		imgNode_cast[cnt] = document.createElement("img");
+		imgNode_cast[cnt].src = cast_result[cnt][0];
+		imgNode_cast[cnt].width = icon_width;
+		imgNode_cast[cnt].height = icon_height;
 		
 		var linkNode = document.createElement("a");
 		linkNode.href = "JavaScript:changesum(" + cnt.toString() + ")";
-		linkNode.appendChild(imgNode);
+		linkNode.appendChild(imgNode_cast[cnt]);
 		gameNode.appendChild(linkNode);
 	}
 	
@@ -516,15 +521,15 @@ function hyouji(){
 	
 	// 使用キャスト画像を表示
 	for(var cnt=0; cnt < cast_cnt; cnt++){
-		var imgNode = document.createElement("img");
-		imgNode.src = cast_result[cnt][0];
+		imgNode_skill[cnt] = document.createElement("img");
+		imgNode_skill[cnt].src = cast_result[cnt][0];
 		
-		imgNode.width = icon_width;
-		imgNode.height = icon_height;
+		imgNode_skill[cnt].width = icon_width;
+		imgNode_skill[cnt].height = icon_height;
 		
 		var linkNode = document.createElement("a");
 		linkNode.href = "JavaScript:changesum(" + cnt.toString() + ")";
-		linkNode.appendChild(imgNode);
+		linkNode.appendChild(imgNode_skill[cnt]);
 		skillNode.appendChild(linkNode);
 	}
 	
@@ -561,14 +566,14 @@ function hyouji(){
 	
 	// 使用キャスト画像を表示
 	for(var cnt=0; cnt < match_cast_cnt; cnt++){
-		var imgNode = document.createElement("img");
-		imgNode.src = match_cast_result[cnt][0];
-		imgNode.width = icon_width;
-		imgNode.height = icon_height;
+		imgNode_other[cnt] = document.createElement("img");
+		imgNode_other[cnt].src = match_cast_result[cnt][0];
+		imgNode_other[cnt].width = icon_width;
+		imgNode_other[cnt].height = icon_height;
 		
 		var linkNode = document.createElement("a");
 		linkNode.href = "JavaScript:changeother(" + cnt.toString() + ")";
-		linkNode.appendChild(imgNode);
+		linkNode.appendChild(imgNode_other[cnt]);
 		castNode.appendChild(linkNode);
 	}
 	
@@ -952,6 +957,13 @@ function match_cast_add(ary_no){
 
 // キャストをクリックした時の処理。試合結果とスキル使用回数は連動。マッチングキャストは別
 function changesum(getcast){
+	// クリック時透過処理、前回の透過アイコンも元に戻す
+	imgNode_cast[getcast_sum].style.opacity = 1;
+	imgNode_skill[getcast_sum].style.opacity = 1;
+	getcast_sum = getcast;
+	imgNode_cast[getcast].style.opacity = 0.5;
+	imgNode_skill[getcast].style.opacity = 0.5;
+	
 	node_ary[0].innerHTML = cast_result[getcast][1];
 	node_ary[1].innerHTML = cast_result[getcast][2];
 	node_ary[2].innerHTML = cast_result[getcast][3];
@@ -1006,6 +1018,11 @@ function changesum(getcast){
 function changeother(getcast){
 	// ソートの受け皿
 	var getrank_ary = [];
+	
+	// クリック時透過処理、前回の透過アイコンも元に戻す
+	imgNode_other[getcast_other].style.opacity = 1;
+	getcast_other = getcast;
+	imgNode_other[getcast].style.opacity = 0.5;
 	
 	cast_ary[0].innerHTML = match_cast_result[getcast][1] + "回";
 	cast_ary[1].innerHTML = (Math.floor(match_cast_result[getcast][1]*10000/match_cast_sum))/100 + "%";
