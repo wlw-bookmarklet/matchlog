@@ -82,6 +82,8 @@ var mtc_detail_data_drs2hit = /<div class="mtc_detail_data_drs2hit".*<\/div>/;
 var mtc_detail_data2_kyoten = /<div class="mtc_detail_data2_kyoten".*<\/div>/;
 // 入手経験値
 var mtc_detail_data2_exp = /<div class="mtc_detail_data2_exp".*<\/div>/;
+// パートナー値
+var mtc_detail_m_with_num = /<div class="mtc_detail_m_with_num".*<\/div>/;
 
 // 試合時間秒数*10
 var battle_time = 420;
@@ -119,6 +121,10 @@ var imgNode_cast = [];
 var imgNode_skill = [];
 var imgNode_other = [];
 var innerNode = null;
+var selecttest = null;
+var inspos  = null;
+var textNode = document.createElement("h2");
+var gameNode = document.createElement("h2");
 var skillNode = document.createElement("h2");
 var castNode = document.createElement("h2");
 var dtlNode = null;
@@ -131,6 +137,9 @@ var skillcnt_ary = [];
 var cast_ary = [];
 var castcardimg_ary = [];
 var castcardcnt_ary = [];
+
+// テスト処理用
+var betatest_flg = 0;
 
 // エラー用変数
 var errnum = 0;
@@ -164,8 +173,8 @@ if( urlchk() ){
 			break;
 		}
 	}
-	
-	if(battle_cnt == 0){
+	// 試合が取得できなかった場合
+	if(battle_cnt == 0 && errnum == 0){
 		errnum = 2;
 	}
 	
@@ -183,7 +192,7 @@ if( urlchk() ){
 			icon_height = 70;
 			margin_bot ="20px";
 		}
-		
+		syukei();
 		hyouji();
 	}
 	
@@ -384,6 +393,19 @@ function sorceget(){
 					}
 				}
 				member_tmp[7] = card_chk;
+				
+				// パートナー値の取得
+				tmpstr = tmp_ary[player_cnt].match(mtc_detail_m_with_num);
+				if(tmpstr == null){
+					// 敵チームは空欄
+					member_tmp[8] = "";
+					member_tmp[9] = "";
+				} else {
+					tmpstr = tmpstr[0].toString().replace(/.*\(/, "").replace(/\).*/, "").replace(/\"/g, "").split(",");
+					member_tmp[8] = tmpstr[0];
+					member_tmp[9] = tmpstr[1];
+				}
+				
 			} else {
 				// COMのとき
 				member_tmp[1] = com_img;
@@ -397,13 +419,27 @@ function sorceget(){
 	}
 }
 
-// 表示処理
-function hyouji(){
+// 集計処理
+function syukei(syukei_date){
+	var skip_cnt = 0;
+	var suminichk_flg = 0;
+	
 	// 試合数だけ集計処理を行う
 	for(cnt = 0; cnt < battle_cnt; cnt++){
+		// 集計日時指定のチェック
+		if(syukei_date != null){
+			if(result_battle[cnt][0].toString().match(syukei_date.toString()) ){
+				
+			} else {
+				skip_cnt++;
+				continue;
+			}
+		}
+		
 		// 初回は集計データの初期化
-		if(cnt == 0){
+		if(suminichk_flg == 0){
 			cast_result_ini(cnt);
+			suminichk_flg = 1;
 		} else {
 			// 集計に加算処理
 			cast_result_add(0, cnt);
@@ -431,16 +467,43 @@ function hyouji(){
 		// マッチングキャストの集計
 		match_cast_add(cnt);
 	}
+	battle_cnt -= skip_cnt;
+}
+
+// 表示処理
+function hyouji(){
+	inspos = document.getElementById("page_title");
 	
 	// タイトルを表示
-	var inspos  = document.getElementById("page_title");
-	var gameNode = document.createElement("h2");
-	//var skillNode = document.createElement("h2");
-	var textNode = document.createTextNode("本気でやっつけてやるんだから！");
+	textNode.innerHTML = "本気でやっつけてやるんだから！"
+	textNode.id = "page_title";
+	inspos.parentNode.insertBefore(textNode, inspos);
 	
-	gameNode.appendChild(textNode);
-	gameNode.id = "page_title";
-	inspos.parentNode.insertBefore(gameNode, inspos);
+	selecttest = document.createElement("select");
+	selecttest.className = "select02";
+	selecttest.setAttribute("onchange", "select_fun(this.value)");
+	
+	var option_def = document.createElement("option");
+	option_def.value = 0;
+	option_def.innerHTML = "オプション機能（テスト中の機能）";
+	selecttest.appendChild(option_def);
+	
+	var option_now = document.createElement("option");
+	option_now.value = 1;
+	option_now.innerHTML = "今日は一緒に行けるの？（最新日のみ集計）";
+	selecttest.appendChild(option_now);
+	
+	var option_lv5 = document.createElement("option");
+	option_lv5.value = 2;
+	option_lv5.innerHTML = "おおきくなるよ！（LV5先行時勝率計算）";
+	selecttest.appendChild(option_lv5);
+	
+	var option_nan = document.createElement("option");
+	option_nan.value = 10;
+	option_nan.innerHTML = "ﾅﾝﾃﾞｯ!!（更新情報）";
+	selecttest.appendChild(option_nan);
+	
+	inspos.parentNode.insertBefore(selecttest, inspos);
 	
 	// 試合結果表示
 	gameNode = document.createElement("div");
@@ -542,7 +605,6 @@ function hyouji(){
 	dtlNode.className = "mtc_detail_skill";
 	dtlNode.style.position = "static";
 	dtlNode.style.width = "100%";
-	//dtlNode.style.textAlign = "center";
 	
 	// 枠の確保
 	addCard("common/img_card_thum/deck_nocard.png", "", 0, "skill");
@@ -1259,3 +1321,67 @@ function addCard(imgurl, usecnt, node_no, mode){
 		dtlNode.appendChild(fixNode);
 	}
 }
+
+// テスト版機能のメニュー
+function select_fun(getno){
+	
+	if(betatest_flg != 0){
+		alert("一部のオプション機能実行後には、続けてオプション機能は行えません。\n");
+		return;
+	}
+	
+	if(getno == 0){
+		// 何もしない
+	} else if(getno == 1){
+		if(window.confirm("注意：テスト機能のため、結果や動作のチェックが甘いです。\n最新の入国した日を対象に集計処理します。\n一日に20戦以上した場合は変わりません。")){
+			// 表示の削除処理
+			inspos.parentNode.removeChild(textNode);
+			inspos.parentNode.removeChild(gameNode);
+			inspos.parentNode.removeChild(skillNode);
+			inspos.parentNode.removeChild(castNode);
+			inspos.parentNode.removeChild(selecttest);
+			cast_cnt = 0;
+			match_cast_cnt = 0;
+			match_cast_sum = 0;
+			var get_date = result_battle[0][0].toString().split(" ");
+			syukei(get_date[0]);
+			hyouji();
+			alert(get_date[0] + "の試合は" + battle_cnt + "件です。");
+			betatest_flg = 1;
+		} else {
+			return;
+		}
+	} else if(getno == 2){
+		if(window.confirm("注意：テスト機能のため、結果や動作のチェックが甘いです。\nLv5先行有利を確認するための機能です。\nデータの都合上、レベルアップ時間は最大8秒ほどの誤差がありえます")){
+			var saki_win = 0;
+			var saki_lose = 0;
+			var ato_win = 0;
+			var ato_lose = 0;
+			var draw_cnt = 0;
+			
+			for(var cnt = 0; cnt < battle_cnt; cnt++){
+				if( parseInt(lvsplit(result_battle[cnt][10][3])) == parseInt(lvsplit(result_battle[cnt][11][3])) ){
+					draw_cnt++;
+				} else if( parseInt(lvsplit(result_battle[cnt][10][3])) < parseInt(lvsplit(result_battle[cnt][11][3])) ){
+					if(result_battle[cnt][9].toString() == "win"){
+						saki_win++;
+					} else {
+						saki_lose++;
+					}
+				} else {
+					if(result_battle[cnt][9].toString() == "win"){
+						ato_win++;
+					} else {
+						ato_lose++;
+					}
+				}
+			}
+			alert("対象試合数：" + battle_cnt + "\n自軍Lv5先行時\n勝率：" + Math.round((saki_win / (saki_win + saki_lose))*100) + "%　勝利数：" + saki_win + "　敗北数：" + saki_lose + "\n敵軍Lv5先行時\n勝率：" + Math.round((ato_win / (ato_win + ato_lose))*100) + "%　勝利数：" + ato_win + "　敗北数：" + ato_lose + "\nレベルアップ（ほぼ）同時試合数：" + draw_cnt);
+		} else {
+			return;
+		}
+	} else if(getno == 10){
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2015/12/26です。\nオプション機能が追加されました。\nこの項目は試験的に作ったものであり、動作確認や結果のチェックが甘いです。");
+	}
+}
+
