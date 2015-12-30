@@ -158,7 +158,7 @@ var errmsg = [
 // 本処理
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
-	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性があります。");
+	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性があります。\n最終更新日 2015/12/30");
 	// 対戦履歴のページ数だけ処理する
 	for(var linkcnt=0; linkcnt < document.links.length; linkcnt++){
 		urlstr = document.links[linkcnt].toString();
@@ -703,11 +703,11 @@ function hyouji(){
 	dtlNode.style.width = "100%";
 	
 	// 枠の確保
-	addCard("common/img_card_thum/deck_nocard.png", "", 0, "skill");
-	addCard("common/img_card_thum/deck_nocard.png", "", 1, "skill");
-	addCard("common/img_card_thum/deck_nocard.png", "", 2, "skill");
-	addCard("common/img_card_thum/deck_nocard.png", "", 3, "skill");
-	addCard("common/img_card_thum/deck_nocard.png", "", 4, "skill");
+	addCard(nocard_img, "", 0, "skill");
+	addCard(nocard_img, "", 1, "skill");
+	addCard(nocard_img, "", 2, "skill");
+	addCard(nocard_img, "", 3, "skill");
+	addCard(nocard_img, "", 4, "skill");
 	
 	skillNode.appendChild(dtlNode);
 	
@@ -747,11 +747,11 @@ function hyouji(){
 	dtlNode.style.width = "100%";
 	dtlNode.style.marginBottom = margin_bot;
 	
-	addCard("common/img_card_thum/deck_nocard.png", "", 0, "cast");
-	addCard("common/img_card_thum/deck_nocard.png", "", 1, "cast");
-	addCard("common/img_card_thum/deck_nocard.png", "", 2, "cast");
-	addCard("common/img_card_thum/deck_nocard.png", "", 3, "cast");
-	addCard("common/img_card_thum/deck_nocard.png", "", 4, "cast");
+	addCard(nocard_img, "", 0, "cast");
+	addCard(nocard_img, "", 1, "cast");
+	addCard(nocard_img, "", 2, "cast");
+	addCard(nocard_img, "", 3, "cast");
+	addCard(nocard_img, "", 4, "cast");
 	castNode.appendChild(dtlNode);
 	
 	addNode("↓アシスト採用率", "", 3, "cast");
@@ -762,14 +762,14 @@ function hyouji(){
 	dtlNode.style.width = "100%";
 	dtlNode.style.marginBottom = margin_bot;
 	
-	addCard("common/img_card_thum/deck_nocard.png", "", 5, "cast");
-	addCard("common/img_card_thum/deck_nocard.png", "", 6, "cast");
-	addCard("common/img_card_thum/deck_nocard.png", "", 7, "cast");
-	addCard("common/img_card_thum/deck_nocard.png", "", 8, "cast");
-	addCard("common/img_card_thum/deck_nocard.png", "", 9, "cast");
-	addCard("common/img_card_thum/deck_nocard.png", "", 10, "cast");
-	addCard("common/img_card_thum/deck_nocard.png", "", 11, "cast");
-	addCard("common/img_card_thum/deck_nocard.png", "", 12, "cast");
+	addCard(nocard_img, "", 5, "cast");
+	addCard(nocard_img, "", 6, "cast");
+	addCard(nocard_img, "", 7, "cast");
+	addCard(nocard_img, "", 8, "cast");
+	addCard(nocard_img, "", 9, "cast");
+	addCard(nocard_img, "", 10, "cast");
+	addCard(nocard_img, "", 11, "cast");
+	addCard(nocard_img, "", 12, "cast");
 	castNode.appendChild(dtlNode);
 	
 	// ソウル表示
@@ -781,11 +781,35 @@ function hyouji(){
 	dtlNode.style.width = "100%";
 	dtlNode.style.marginBottom = margin_bot;
 	
-	addCard("common/img_card_thum/deck_nocard.png", "", 13, "cast");
-	addCard("common/img_card_thum/deck_nocard.png", "", 14, "cast");
-	addCard("common/img_card_thum/deck_nocard.png", "", 15, "cast");
-	addCard("common/img_card_thum/deck_nocard.png", "", 16, "cast");
-	addCard("common/img_card_thum/deck_nocard.png", "", 17, "cast");
+	addCard(nocard_img, "", 13, "cast");
+	addCard(nocard_img, "", 14, "cast");
+	addCard(nocard_img, "", 15, "cast");
+	addCard(nocard_img, "", 16, "cast");
+	addCard(nocard_img, "", 17, "cast");
+	castNode.appendChild(dtlNode);
+	
+	// キャスト登場率ランキング
+	addNode("登場数ランキング", "対象試合数:" + battle_cnt, 5, "cast");
+	
+	dtlNode = document.createElement("div");
+	dtlNode.className = "mtc_detail_skill";
+	dtlNode.style.position = "static";
+	dtlNode.style.width = "100%";
+	dtlNode.style.marginBottom = margin_bot;
+	
+	var getrank_ary = [];
+	getrank_ary = card_ranking( "", 5, "castapp");
+	
+	addCard(match_cast_result[getrank_ary[0]][0], "", 50, "cast");
+	castcardcnt_ary[50].innerHTML = match_cast_result[getrank_ary[0]][1] + "回";
+	addCard(match_cast_result[getrank_ary[1]][0], "", 51, "cast");
+	castcardcnt_ary[51].innerHTML = match_cast_result[getrank_ary[1]][1] + "回";
+	addCard(match_cast_result[getrank_ary[2]][0], "", 52, "cast");
+	castcardcnt_ary[52].innerHTML = match_cast_result[getrank_ary[2]][1] + "回";
+	addCard(match_cast_result[getrank_ary[3]][0], "", 53, "cast");
+	castcardcnt_ary[53].innerHTML = match_cast_result[getrank_ary[3]][1] + "回";
+	addCard(match_cast_result[getrank_ary[4]][0], "", 54, "cast");
+	castcardcnt_ary[54].innerHTML = match_cast_result[getrank_ary[4]][1] + "回";
 	castNode.appendChild(dtlNode);
 	
 	// ページに追加
@@ -1247,12 +1271,21 @@ function card_ranking(getcast, addcnt, mode){
 		mode_work = 7;
 	} else if(mode.toString() == "soul"){
 		mode_work = 9;
+	} else if(mode.toString() == "castapp"){
+		mode_work = 1;
 	}
 	
 	// 配列をソート済みとソート前でコピー、contact()は試した
-	for(add_work = 0; add_work < match_cast_result[getcast][mode_work].length; add_work++){
-		work_ary.push(match_cast_result[getcast][mode_work][add_work]);
-		sort_ary.push(match_cast_result[getcast][mode_work][add_work]);
+	if(mode_work != 1){
+		for(add_work = 0; add_work < match_cast_result[getcast][mode_work].length; add_work++){
+			work_ary.push(match_cast_result[getcast][mode_work][add_work]);
+			sort_ary.push(match_cast_result[getcast][mode_work][add_work]);
+		}
+	} else if(mode_work == 1){
+		for(add_work = 0; add_work < match_cast_result.length; add_work++){
+			work_ary.push(match_cast_result[add_work][mode_work]);
+			sort_ary.push(match_cast_result[add_work][mode_work]);
+		}
 	}
 	
 	// 降順ソート処理
@@ -1646,7 +1679,7 @@ function select_fun(getno){
 			alert(lsdata_getcnt + "件のデータを削除しました。");
 		}
 	} else if(getno == 10){
-		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2015/12/30です。\n項目の整理を行いました。\n20件以上の集計をするために、保存＆読込機能を追加しました。\nブラウザごとの保存となるため、違うブラウザや端末を使うと蓄積されません。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2015/12/30です。\n項目の整理を行いました。\n20件以上の集計をするために、保存＆読込機能を追加しました。\nブラウザごとの保存となるため、違うブラウザや端末を使うと蓄積されません。\nマッチングキャストの登場数ランキングを追加しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
 	}
 }
 
