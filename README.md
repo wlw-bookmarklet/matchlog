@@ -15,8 +15,14 @@
 
 ####使用方法：
 　ブックマークレット登録用のアドレスは下記になります（コピー＆ペースト推奨）。<br>
+<br>
+↓最新版です。機能が追加される度に更新されますので、基本的にはこちらをお使いください。
 ```
 javascript:(function(d,s){s=d.createElement('script');s.src='https://rawgit.com/wlw-bookmarklet/matchlog/master/honkide.js';d.body.appendChild(s);})(document)
+```
+↓最近の更新で使えなくなった場合、こちらをお試しください。また、twitterアカウント宛に連絡いただけると助かります。
+```
+javascript:(function(d,s){s=d.createElement('script');s.src='https://rawgit.com/wlw-bookmarklet/matchlog/master/honkide_20151226.js';d.body.appendChild(s);})(document)
 ```
 
 　登録したブックマークレットを、対戦履歴ページ（画像を参照）で実行してください。
