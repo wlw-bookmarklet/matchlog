@@ -4,6 +4,13 @@ javascript:
 var starturl1 = "https://wonderland-wars.net/matchlog.html";
 var starturl2 = "https://wonderland-wars.net/matchlog.html?type=all";
 
+// カード名取得用URL(ver=の部分は公式のタイミングによっては古いかも)
+var skill_listurl = "https://wonderland-wars.net/cardlist.html?ver=19&type=1";
+var assist_listurl = "https://wonderland-wars.net/cardlist.html?ver=19&type=2";
+// カードリスト格納用配列
+var skill_listary = null;
+var assist_listary = null;
+
 // 空欄カード用URL
 var nocard_img = "common/img_card_thum/deck_nocard.png";
 var com_img = "582e3423a336042b335de96584d116e2.png";
@@ -99,6 +106,8 @@ var battle_per = 4.2;
 var urlstr = null;
 // 対象試合数変数
 var battle_cnt = 0;
+// 処理スキップ試合数
+var skip_battle = 0;
 // キャストカウンタ
 var cast_cnt = 0;
 // キャスト重複チェック
@@ -150,31 +159,48 @@ var castcardcnt_ary = [];
 var betatest_flg = 0;
 
 // エラー用変数
+var errstr = "";
 var errnum = 0;
 var errmsg = [
-"正常に処理されました。"
+"正常に処理されました。\n"
 ,"ブックマークレットが既に実行済みです。\n複数回起動した場合、読み込み処理に異常が発生します。\n再度表示したい場合は、一度ページを更新してからブックマークレットを再実行してください。\nまた、この状態で保存は行わないでください。"
-,"対戦履歴の取得件数が0件でした。\n対戦履歴が存在していないか、\n対戦履歴詳細のURLが変更されて読み込めなくなった可能性があります。"
+,"対戦履歴の取得件数が0件でした。\n対戦履歴が存在していないか、\n対戦履歴詳細のURLが変更されて読み込めなくなった可能性があります。\nまた、サーバーメンテナンス中にも発生します。"
+,"カードデータ呼び出しエラーです。\nまた、サーバーメンテナンス中にも発生します。"
+,"通信エラーが発生しました。\nログインが有効ではなくなっています、トップページからログインし直してみてください。"
+,"通信エラーが発生しました。\n対戦履歴詳細ページへのアクセスに失敗しました。\n回線の安定している状態で再度実行してみてください。"
+,"キャストデータの初期化処理時にエラーが発生しました。\n試合結果が正常に取得できなかったか、想定外のデータになっている可能性があります。"
+,"キャストデータの集計処理時にエラーが発生しました。\n試合結果が正常に取得できなかったか、想定外のデータになっている可能性があります。"
+,"マッチングキャストの集計中処理時にエラーが発生しました。\n試合結果が正常に取得できなかったか、想定外のデータになっている可能性があります。"
+,"表示処理中にエラーが発生しました。\n集計した試合結果が想定外のデータになっている可能性があります。"
+,"取得に失敗した試合と、正常に取得できた試合があります。\n正常に取得できた試合のみでの結果を表示します。\n一部機能が使用できなくなります。また、結果の保存は行わないでください。"
 ]
 
 // 本処理
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
-	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性があります。\n最終更新日 2016/1/1");
+	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/3");
 	// 対戦履歴のページ数だけ処理する
 	for(var linkcnt=0; linkcnt < document.links.length; linkcnt++){
 		urlstr = document.links[linkcnt].toString();
+		
 		// 起動済みでないかのチェック
 		if(urlstr.match(/changesum/)){
 			errnum = 1;
 			break;
 		}
+		
 		// 対象外のURLも含まれるので、アドレスチェックを行う
 		if( urlstr.match(/matchlogdetail/i) ){
-			request.open("GET", urlstr, false);
-			request.onreadystatechange=sorceget;
-			request.send(null);
-			battle_cnt++;
+			try{
+				request.open("GET", urlstr, false);
+				request.onreadystatechange=sorceget;
+				request.send(null);
+			} catch(e) {
+				request.abort();
+				errstr = "対象ページ:\n" + urlstr + "\n\n" + e;
+				errnum = 5;
+				break;
+			}
 		}
 		
 		if(errnum != 0){
@@ -185,8 +211,25 @@ if( urlchk() ){
 	if(battle_cnt == 0 && errnum == 0){
 		errnum = 2;
 	}
+	/*
+	if(errnum == 0){
+		// カードリストの取得
+		urlstr = skill_listurl;
+		request.open("GET", urlstr, false);
+		request.onreadystatechange=cardlistget;
+		request.send(null);
+		
+		urlstr = assist_listurl;
+		request.open("GET", urlstr, false);
+		request.onreadystatechange=cardlistget;
+		request.send(null);
+	}
+	*/
+	if(errnum == 0){
+		syukei();
+	}
 	
-	// エラーが無ければ集計＆表示処理
+	// エラーが無ければ表示処理
 	if(errnum == 0){
 		// 画面サイズによってレイアウト用の値を設定
 		if (window.innerWidth < 481) { 
@@ -204,12 +247,18 @@ if( urlchk() ){
 			card_height = 87;
 			margin_bot ="20px";
 		}
-		syukei();
 		hyouji();
 	}
 	
 	// 終了メッセージ
-	alert("処理終了　エラー番号:" + errnum + "\n" + errmsg[errnum]);
+	if(skip_battle != 0 && battle_cnt != 0 && errnum == 0){
+		errnum = 10;
+		alert("処理終了　エラー番号:" + errnum + "\n" + "取得試合数:" + battle_cnt + "\n" + "取得失敗試合数:" + skip_battle + "\n" + errmsg[errnum]);
+	} else if(battle_cnt != 0 && errnum == 0){
+		alert("処理終了　エラー番号:" + errnum + "\n" + "取得試合数:" + battle_cnt + "\n" + errmsg[errnum]);
+	} else {
+		alert("処理終了　エラー番号:" + errnum + "\n" + errmsg[errnum] + "\n\n" + errstr);
+	}
 } else {
 	alert("ﾅﾝﾃﾞｯ!!");
 }
@@ -230,268 +279,303 @@ function sorceget(){
 		var tmp_ary = [];
 		var comchk = [];
 		
-		// ソースをテキストに
-		src_txt = request.responseText;
-		
-		// ソースを2分割
-		src_ary = src_txt.split("mtc_detail_member clearfix");
-		
-		// 試合時刻を取得
-		tmpstr = src_ary[0].match(match_time);
-		result_ary[0] = tagsplit(tmpstr[0]);
-		// プレーヤー名を取得
-		tmpstr = src_ary[0].match(mp_mydata_name);
-		result_ary[1] = tagsplit(tmpstr[0]);
-		// 都道府県を取得
-		tmpstr = src_ary[0].match(mp_mydata_location);
-		result_ary[2] = tagsplit(tmpstr[0]);
-		// 店舗名を取得
-		tmpstr = src_ary[0].match(mtc_detail_store);
-		result_ary[3] = tagsplit(tmpstr[0]);
-		// マップ名を取得
-		tmpstr = src_ary[0].match(mtc_detail_map);
-		var tmpstr1 = tmpstr[0].split("<p>");
-		tmpstr = tmpstr1[1].split("<");
-		result_ary[4] = tmpstr[0];
-		
-		// プレイヤー画像を取得
-		tmpstr = src_ary[0].match(mtc_detail_cast).toString().split("/");
-		result_ary[5] = tmpstr[2];
-		// タイムを取得
-		tmpstr = src_ary[0].match(mtc_detail_time);
-		result_ary[6] = tagsplit(tmpstr[0]);
-		// 味方ゲージを取得
-		result_ary[7] = parseInt( lvsplit( src_ary[0].match(mtc_detail_mygage).toString() ) );
-		// 敵ゲージを取得
-		result_ary[8] = parseInt( lvsplit( src_ary[0].match(mtc_detail_enemygage).toString() ) );
-		// 勝敗を取得
-		var win_lose = src_ary[0].match(mtc_detail_result);
-		if(win_lose[0].match("icon_win.png") != null){
-			result_ary[9] = "win";
-		} else {
-			result_ary[9] = "lose";
-		}
-		
-		// レベルアップ時間を取得
-		var lvup_ary = [];
-		tmpstr = src_ary[0].match(levelup_my_lv);
-		for(cnt = 0; cnt < 7; cnt++){
-			if(tmpstr[cnt] == null){
-				lvup_ary[cnt] = 100;
-			} else {
-				lvup_ary[cnt] = parseInt(lvsplit(tmpstr[cnt]));
-			}
-		}
-		result_ary[10] = lvup_ary;
-		
-		var lvup_ary = [];
-		tmpstr = src_ary[0].match(levelup_enemy_lv);
-		for(cnt = 0; cnt < 7; cnt++){
-			if(tmpstr[cnt] == null){
-				lvup_ary[cnt] = 100;
-			} else {
-				lvup_ary[cnt] = parseInt(lvsplit(tmpstr[cnt]));
-			}
-		}
-		result_ary[11] = lvup_ary;
-		// 兵士撃破数を取得
-		tmpstr = src_ary[0].match(mtc_detail_data_heishi);
-		result_ary[12] = tagsplit(tmpstr[0]);
-		// キャスト撃破数
-		tmpstr = src_ary[0].match(mtc_detail_data_cast);
-		result_ary[13] = tagsplit(tmpstr[0]);
-		// 巨人撃破数
-		tmpstr = src_ary[0].match(mtc_detail_data_titan);
-		result_ary[14] = tagsplit(tmpstr[0]);
-		// 撤退数
-		tmpstr = src_ary[0].match(mtc_detail_data_tettai);
-		result_ary[15] = tagsplit(tmpstr[0]);
-		// ストレートショット
-		tmpstr = src_ary[0].match(mtc_detail_data_sts);
-		result_ary[16] = tagsplit(tmpstr[0]);
-		// ストレートショットHIT
-		tmpstr = src_ary[0].match(mtc_detail_data_stshit);
-		result_ary[17] = tagsplit(tmpstr[0]);
-		// ドローショット
-		tmpstr = src_ary[0].match(mtc_detail_data_drs);
-		result_ary[18] = tagsplit(tmpstr[0]);
-		// ドローショットHIT
-		tmpstr = src_ary[0].match(mtc_detail_data_drshit);
-		result_ary[19] = tagsplit(tmpstr[0]);
-		// 帰城
-		tmpstr = src_ary[0].match(mtc_detail_data_backhome);
-		result_ary[20] = tagsplit(tmpstr[0]);
-		// ストレートショット被HIT
-		tmpstr = src_ary[0].match(mtc_detail_data_sts2hit);
-		result_ary[21] = tagsplit(tmpstr[0]);
-		// ドローショット被HIT
-		tmpstr = src_ary[0].match(mtc_detail_data_drs2hit);
-		result_ary[22] = tagsplit(tmpstr[0]);
-		// 拠点破壊数
-		tmpstr = src_ary[0].match(mtc_detail_data2_kyoten);
-		result_ary[23] = tagsplit(tmpstr[0]);
-		// 入手経験値
-		tmpstr = src_ary[0].match(mtc_detail_data2_exp);
-		result_ary[24] = tagsplit(tmpstr[0]);
-		
-		// 自プレイヤースキルアシスト情報を取得
-		// スキルカードファイル名を取得
-		player[0] = src_ary[0].match(mtc_detail_skill);
-		for(cnt = 0; cnt < player[0].length; cnt++){
-			tmpstr = player[0][cnt].split("/");
-			player[0][cnt] = tmpstr[3];
-		}
-		// スキル使用回数を取得
-		card_chk = src_ary[0].match(mtc_detail_skill_count);
-		// スキル使用回数特有のスペースやタブを除去
-		for(cnt = 0; cnt < card_chk.length; cnt++){
-			card_chk[cnt] = card_chk[cnt].replace(/\s+/g, "");
-			card_chk[cnt] = card_chk[cnt].replace(/<.*>/, "");
-		}
-		player[1] = card_chk;
-		
-		// アシストカードファイル名を取得
-		player[2] = src_ary[0].match(mtc_detail_assist);
-		for(cnt = 0; cnt < player[2].length; cnt++){
-			tmpstr = player[2][cnt].split("/");
-			player[2][cnt] = tmpstr[3];
-		}
-		
-		// ソウルカードファイル名を取得
-		player[3] = src_ary[0].match(mtc_detail_soul);
-		for(cnt = 0; cnt < player[3].length; cnt++){
-			tmpstr = player[3][cnt].split("/");
-			player[3][cnt] = tmpstr[3];
-		}
-		
-		// カードのレベルを取得
-		card_chk = [];
-		tmpstr = src_ary[0].split(mtc_detail_cardblock);
-		for(cnt = 0; cnt < 8; cnt++){
-			// LV MAXチェック
-			var chkstr = tmpstr[cnt+1].match(mtc_detail_cardblock_lv_max);
-			if(chkstr != null){
-				card_chk[cnt] = "MAX";
-			} else {
-				chkstr = tmpstr[cnt+1].match(mtc_detail_cardblock_lv);
-				if(chkstr != null){
-					card_chk[cnt] = tagsplit(chkstr[0]);
-				} else {
-					card_chk[cnt] = "0";
-				}
-			}
-		}
-		player[4] = card_chk;
-		
-		// プレイヤーカード情報を格納
-		result_ary[25] = player;
-		
-		// COMプレイヤーと使用キャストの確認
-		for(cnt = 0; cnt < 7; cnt++){
-			if(cnt < 3){
-				chkreg = new RegExp("id=\"friend_" + cnt + "\"\\s*com=\"false\"");
-			} else {
-				var enemy_cnt = cnt - 3
-				chkreg = new RegExp("id=\"enemy_" + enemy_cnt + "\"\\s*com=\"false\"");
-			}
-			if(src_ary[1].match(chkreg) == null){
-				comchk[cnt] = 1;
-			} else {
-				comchk[cnt] = 0;
-			}
-		}
-		
-		// 他プレイヤーのための分割
-		tmp_ary = src_ary[1].split("match_detail_member_pop");
-		var player_cnt = 0;
-		
-		// 他プレイヤーのデータを取得
-		for(cnt = 0; cnt < 7; cnt++){
-			var member_tmp = [];
+		try{
+			// ソースをテキストに
+			src_txt = request.responseText;
 			
-			// COMフラグの挿入
-			member_tmp[0] = comchk[cnt];
-			// COMでないなら取得を行う
-			if(member_tmp[0] == 0){
-				player_cnt++;
-				// キャスト画像URL
-				tmpstr = tmp_ary[player_cnt].match(mtc_detail_cast).toString().split("/");
-				member_tmp[1] = tmpstr[2].toString();
-				// プレイヤー名
-				tmpstr = tmp_ary[player_cnt].match(mp_mydata_name);
-				member_tmp[2] = tagsplit(tmpstr[0]);
-				// 都道府県
-				tmpstr = tmp_ary[player_cnt].match(mp_mydata_location);
-				member_tmp[3] = tagsplit(tmpstr[0]);
-				// 装備情報
-				// スキルカード
-				var eqary= [];
-				tmpstr = tmp_ary[player_cnt].match(mtc_detail_skill);
-				for(var eqcnt = 0; eqcnt < 4; eqcnt++){
-					var eqstr = tmpstr[eqcnt].toString().split("/");
-					eqary[eqcnt] = eqstr[3].toString();
+			// ログイン済みかのチェック
+			if(src_txt.match("ログインフォーム")){
+				errnum = 4;
+				return;
+			}
+			
+			// ソースを2分割
+			src_ary = src_txt.split("mtc_detail_member clearfix");
+			
+			// 試合時刻を取得
+			tmpstr = src_ary[0].match(match_time);
+			result_ary[0] = tagsplit(tmpstr[0]);
+			// プレーヤー名を取得
+			tmpstr = src_ary[0].match(mp_mydata_name);
+			result_ary[1] = tagsplit(tmpstr[0]);
+			// 都道府県を取得
+			tmpstr = src_ary[0].match(mp_mydata_location);
+			result_ary[2] = tagsplit(tmpstr[0]);
+			// 店舗名を取得
+			tmpstr = src_ary[0].match(mtc_detail_store);
+			result_ary[3] = tagsplit(tmpstr[0]);
+			// マップ名を取得
+			tmpstr = src_ary[0].match(mtc_detail_map);
+			var tmpstr1 = tmpstr[0].split("<p>");
+			tmpstr = tmpstr1[1].split("<");
+			result_ary[4] = tmpstr[0];
+			
+			// プレイヤー画像を取得
+			tmpstr = src_ary[0].match(mtc_detail_cast).toString().split("/");
+			result_ary[5] = tmpstr[2];
+			// タイムを取得
+			tmpstr = src_ary[0].match(mtc_detail_time);
+			result_ary[6] = tagsplit(tmpstr[0]);
+			// 味方ゲージを取得
+			result_ary[7] = parseInt( lvsplit( src_ary[0].match(mtc_detail_mygage).toString() ) );
+			// 敵ゲージを取得
+			result_ary[8] = parseInt( lvsplit( src_ary[0].match(mtc_detail_enemygage).toString() ) );
+			// 勝敗を取得
+			var win_lose = src_ary[0].match(mtc_detail_result);
+			if(win_lose[0].match("icon_win.png") != null){
+				result_ary[9] = "win";
+			} else {
+				result_ary[9] = "lose";
+			}
+			
+			// レベルアップ時間を取得
+			var lvup_ary = [];
+			tmpstr = src_ary[0].match(levelup_my_lv);
+			for(cnt = 0; cnt < 7; cnt++){
+				if(tmpstr[cnt] == null){
+					lvup_ary[cnt] = 100;
+				} else {
+					lvup_ary[cnt] = parseInt(lvsplit(tmpstr[cnt]));
 				}
-				member_tmp[4] = eqary;
-				// アシストカード
-				var eqary= [];
-				tmpstr = tmp_ary[player_cnt].match(mtc_detail_assist);
-				for(var eqcnt = 0; eqcnt < 3; eqcnt++){
-					var eqstr = tmpstr[eqcnt].toString().split("/");
-					eqary[eqcnt] = eqstr[3].toString();
+			}
+			result_ary[10] = lvup_ary;
+			
+			var lvup_ary = [];
+			tmpstr = src_ary[0].match(levelup_enemy_lv);
+			for(cnt = 0; cnt < 7; cnt++){
+				if(tmpstr[cnt] == null){
+					lvup_ary[cnt] = 100;
+				} else {
+					lvup_ary[cnt] = parseInt(lvsplit(tmpstr[cnt]));
 				}
-				member_tmp[5] = eqary;
-				// ソウルカード
-				var eqary= [];
-				tmpstr = tmp_ary[player_cnt].match(mtc_detail_soul);
-				for(var eqcnt = 0; eqcnt < 1; eqcnt++){
-					var eqstr = tmpstr[eqcnt].toString().split("/");
-					eqary[eqcnt] = eqstr[3].toString();
-				}
-				member_tmp[6] = eqary;
-				
-				// カードのレベルを取得
-				card_chk = [];
-				tmpstr = tmp_ary[player_cnt].split(mtc_detail_m_cardblock);
-				for(var lvcnt = 0; lvcnt < 8; lvcnt++){
-					var chkstr = tmpstr[lvcnt+1].match(mtc_detail_cardblock_lv_max);
+			}
+			result_ary[11] = lvup_ary;
+			// 兵士撃破数を取得
+			tmpstr = src_ary[0].match(mtc_detail_data_heishi);
+			result_ary[12] = tagsplit(tmpstr[0]);
+			// キャスト撃破数
+			tmpstr = src_ary[0].match(mtc_detail_data_cast);
+			result_ary[13] = tagsplit(tmpstr[0]);
+			// 巨人撃破数
+			tmpstr = src_ary[0].match(mtc_detail_data_titan);
+			result_ary[14] = tagsplit(tmpstr[0]);
+			// 撤退数
+			tmpstr = src_ary[0].match(mtc_detail_data_tettai);
+			result_ary[15] = tagsplit(tmpstr[0]);
+			// ストレートショット
+			tmpstr = src_ary[0].match(mtc_detail_data_sts);
+			result_ary[16] = tagsplit(tmpstr[0]);
+			// ストレートショットHIT
+			tmpstr = src_ary[0].match(mtc_detail_data_stshit);
+			result_ary[17] = tagsplit(tmpstr[0]);
+			// ドローショット
+			tmpstr = src_ary[0].match(mtc_detail_data_drs);
+			result_ary[18] = tagsplit(tmpstr[0]);
+			// ドローショットHIT
+			tmpstr = src_ary[0].match(mtc_detail_data_drshit);
+			result_ary[19] = tagsplit(tmpstr[0]);
+			// 帰城
+			tmpstr = src_ary[0].match(mtc_detail_data_backhome);
+			result_ary[20] = tagsplit(tmpstr[0]);
+			// ストレートショット被HIT
+			tmpstr = src_ary[0].match(mtc_detail_data_sts2hit);
+			result_ary[21] = tagsplit(tmpstr[0]);
+			// ドローショット被HIT
+			tmpstr = src_ary[0].match(mtc_detail_data_drs2hit);
+			result_ary[22] = tagsplit(tmpstr[0]);
+			// 拠点破壊数
+			tmpstr = src_ary[0].match(mtc_detail_data2_kyoten);
+			result_ary[23] = tagsplit(tmpstr[0]);
+			// 入手経験値
+			tmpstr = src_ary[0].match(mtc_detail_data2_exp);
+			result_ary[24] = tagsplit(tmpstr[0]);
+			
+			// 自プレイヤースキルアシスト情報を取得
+			// スキルカードファイル名を取得
+			player[0] = src_ary[0].match(mtc_detail_skill);
+			for(cnt = 0; cnt < player[0].length; cnt++){
+				tmpstr = player[0][cnt].split("/");
+				player[0][cnt] = tmpstr[3];
+			}
+			// スキル使用回数を取得
+			card_chk = src_ary[0].match(mtc_detail_skill_count);
+			// スキル使用回数特有のスペースやタブを除去
+			for(cnt = 0; cnt < card_chk.length; cnt++){
+				card_chk[cnt] = card_chk[cnt].replace(/\s+/g, "");
+				card_chk[cnt] = card_chk[cnt].replace(/<.*>/, "");
+			}
+			player[1] = card_chk;
+			
+			// アシストカードファイル名を取得
+			player[2] = src_ary[0].match(mtc_detail_assist);
+			for(cnt = 0; cnt < player[2].length; cnt++){
+				tmpstr = player[2][cnt].split("/");
+				player[2][cnt] = tmpstr[3];
+			}
+			
+			// ソウルカードファイル名を取得
+			player[3] = src_ary[0].match(mtc_detail_soul);
+			for(cnt = 0; cnt < player[3].length; cnt++){
+				tmpstr = player[3][cnt].split("/");
+				player[3][cnt] = tmpstr[3];
+			}
+			
+			// カードのレベルを取得
+			card_chk = [];
+			tmpstr = src_ary[0].split(mtc_detail_cardblock);
+			for(cnt = 0; cnt < 8; cnt++){
+				// LV MAXチェック
+				var chkstr = tmpstr[cnt+1].match(mtc_detail_cardblock_lv_max);
+				if(chkstr != null){
+					card_chk[cnt] = "MAX";
+				} else {
+					chkstr = tmpstr[cnt+1].match(mtc_detail_cardblock_lv);
 					if(chkstr != null){
-						card_chk[lvcnt] = "MAX";
+						card_chk[cnt] = tagsplit(chkstr[0]);
 					} else {
-						var chkstr = tmpstr[lvcnt+1].match(mtc_detail_cardblock_lv);
-						if(chkstr != null){
-							card_chk[lvcnt] = tagsplit(chkstr[0]);
-						} else {
-							card_chk[lvcnt] = "0";
-						}
+						card_chk[cnt] = "0";
 					}
 				}
-				member_tmp[7] = card_chk;
-				
-				// パートナー値の取得
-				tmpstr = tmp_ary[player_cnt].match(mtc_detail_m_with_num);
-				if(tmpstr == null){
-					// 敵チームは空欄
-					member_tmp[8] = "";
-					member_tmp[9] = "";
-				} else {
-					tmpstr = tmpstr[0].toString().replace(/.*\(/, "").replace(/\).*/, "").replace(/\"/g, "").split(",");
-					member_tmp[8] = tmpstr[0];
-					member_tmp[9] = tmpstr[1];
-				}
-				
-			} else {
-				// COMのとき
-				member_tmp[1] = com_img;
-				member_tmp[2] = "COM";
 			}
-			other_member[cnt] = member_tmp;
+			player[4] = card_chk;
+			
+			// プレイヤーカード情報を格納
+			result_ary[25] = player;
+			
+			// COMプレイヤーと使用キャストの確認
+			for(cnt = 0; cnt < 7; cnt++){
+				if(cnt < 3){
+					chkreg = new RegExp("id=\"friend_" + cnt + "\"\\s*com=\"false\"");
+				} else {
+					var enemy_cnt = cnt - 3
+					chkreg = new RegExp("id=\"enemy_" + enemy_cnt + "\"\\s*com=\"false\"");
+				}
+				if(src_ary[1].match(chkreg) == null){
+					comchk[cnt] = 1;
+				} else {
+					comchk[cnt] = 0;
+				}
+			}
+			
+			// 他プレイヤーのための分割
+			tmp_ary = src_ary[1].split("match_detail_member_pop");
+			var player_cnt = 0;
+			
+			// 他プレイヤーのデータを取得
+			for(cnt = 0; cnt < 7; cnt++){
+				var member_tmp = [];
+				
+				// COMフラグの挿入
+				member_tmp[0] = comchk[cnt];
+				// COMでないなら取得を行う
+				if(member_tmp[0] == 0){
+					player_cnt++;
+					// キャスト画像URL
+					tmpstr = tmp_ary[player_cnt].match(mtc_detail_cast).toString().split("/");
+					member_tmp[1] = tmpstr[2].toString();
+					// プレイヤー名
+					tmpstr = tmp_ary[player_cnt].match(mp_mydata_name);
+					member_tmp[2] = tagsplit(tmpstr[0]);
+					// 都道府県
+					tmpstr = tmp_ary[player_cnt].match(mp_mydata_location);
+					member_tmp[3] = tagsplit(tmpstr[0]);
+					// 装備情報
+					// スキルカード
+					var eqary= [];
+					tmpstr = tmp_ary[player_cnt].match(mtc_detail_skill);
+					for(var eqcnt = 0; eqcnt < 4; eqcnt++){
+						var eqstr = tmpstr[eqcnt].toString().split("/");
+						eqary[eqcnt] = eqstr[3].toString();
+					}
+					member_tmp[4] = eqary;
+					// アシストカード
+					var eqary= [];
+					tmpstr = tmp_ary[player_cnt].match(mtc_detail_assist);
+					for(var eqcnt = 0; eqcnt < 3; eqcnt++){
+						var eqstr = tmpstr[eqcnt].toString().split("/");
+						eqary[eqcnt] = eqstr[3].toString();
+					}
+					member_tmp[5] = eqary;
+					// ソウルカード
+					var eqary= [];
+					tmpstr = tmp_ary[player_cnt].match(mtc_detail_soul);
+					for(var eqcnt = 0; eqcnt < 1; eqcnt++){
+						var eqstr = tmpstr[eqcnt].toString().split("/");
+						eqary[eqcnt] = eqstr[3].toString();
+					}
+					member_tmp[6] = eqary;
+					
+					// カードのレベルを取得
+					card_chk = [];
+					tmpstr = tmp_ary[player_cnt].split(mtc_detail_m_cardblock);
+					for(var lvcnt = 0; lvcnt < 8; lvcnt++){
+						var chkstr = tmpstr[lvcnt+1].match(mtc_detail_cardblock_lv_max);
+						if(chkstr != null){
+							card_chk[lvcnt] = "MAX";
+						} else {
+							var chkstr = tmpstr[lvcnt+1].match(mtc_detail_cardblock_lv);
+							if(chkstr != null){
+								card_chk[lvcnt] = tagsplit(chkstr[0]);
+							} else {
+								card_chk[lvcnt] = "0";
+							}
+						}
+					}
+					member_tmp[7] = card_chk;
+					
+					// パートナー値の取得
+					tmpstr = tmp_ary[player_cnt].match(mtc_detail_m_with_num);
+					if(tmpstr == null){
+						// 敵チームは空欄
+						member_tmp[8] = "";
+						member_tmp[9] = "";
+					} else {
+						tmpstr = tmpstr[0].toString().replace(/.*\(/, "").replace(/\).*/, "").replace(/\"/g, "").split(",");
+						member_tmp[8] = tmpstr[0];
+						member_tmp[9] = tmpstr[1];
+					}
+					
+				} else {
+					// COMのとき
+					member_tmp[1] = com_img;
+					member_tmp[2] = "COM";
+				}
+				other_member[cnt] = member_tmp;
+			}
+			result_ary[26] = other_member;
+			
+			// 結果を格納
+			result_battle[battle_cnt] = result_ary;
+			battle_cnt++;
+			
+		} catch(e) {
+			skip_battle++;
+			return;
 		}
-		result_ary[26] = other_member;
-		// 結果を格納
-		result_battle[battle_cnt] = result_ary;
 	}
 }
-
+/*
+// カードリスト取得処理
+function cardlistget(){
+	var src_txt = null;
+	
+	if (request.readyState == 4 && request.status == 200){
+		// ソースをテキストに
+		src_txt = request.responseText;
+		if(src_txt.match("現在サーバーメンテナンス中です。")){
+			errnum = 3;
+		} else {
+			if(urlstr == skill_listurl){
+				skill_listary = src_txt.split("<tr>");
+			} else if(urlstr == assist_listurl){
+				assist_listary = src_txt.split("<tr>");
+			} else {
+				errnum = 3;
+			}
+		}
+	}
+}
+*/
 // 集計処理
 function syukei(strdata, mode){
 	var skip_cnt = 0;
@@ -519,13 +603,18 @@ function syukei(strdata, mode){
 			}
 		}
 		
-		// 初回は集計データの初期化
+		// 初回は使用キャスト集計データの初期化
 		if(suminichk_flg == 0){
 			cast_result_ini(cnt);
 			suminichk_flg = 1;
 		} else {
 			// 集計に加算処理
 			cast_result_add(0, cnt);
+		}
+		// エラーチェック
+		if(errnum != 0){
+			alert("使用キャストの集計中にエラーが発生しました。\n対象試合日時:\n" + result_battle[cnt][0]);
+			break;
 		}
 		
 		// キャストごとの重複チェック
@@ -546,273 +635,289 @@ function syukei(strdata, mode){
 			// フラグ初期化
 			cast_chkflg = -1;
 		}
+		// エラーチェック
+		if(errnum != 0){
+			alert("キャストごとの集計中にエラーが発生しました。\n対象試合日時:\n" + result_battle[cnt][0]);
+			break;
+		}
 		
 		// マッチングキャストの集計
 		match_cast_add(cnt);
+		
+		// エラーチェック
+		if(errnum != 0){
+			alert("マッチングキャストの集計中にエラーが発生しました。\n対象試合日時:\n" + result_battle[cnt][0]);
+			break;
+		}
 	}
 	battle_cnt -= skip_cnt;
 }
 
 // 表示処理
 function hyouji(){
-	inspos = document.getElementById("page_title");
-	
-	// タイトルを表示
-	textNode.innerHTML = "本気でやっつけてやるんだから！"
-	textNode.id = "page_title";
-	inspos.parentNode.insertBefore(textNode, inspos);
-	
-	selecttest = document.createElement("select");
-	selecttest.className = "select02";
-	selecttest.setAttribute("onchange", "select_fun(this.value)");
-	
-	var option_def = document.createElement("option");
-	option_def.value = 0;
-	option_def.innerHTML = "オプション機能(テスト中の機能)";
-	selecttest.appendChild(option_def);
-	
-	var option_now = document.createElement("option");
-	option_now.value = 1;
-	option_now.innerHTML = "わかったよー！(最新日のみ集計)";
-	selecttest.appendChild(option_now);
-	
-	var option_map = document.createElement("option");
-	option_map.value = 2;
-	option_map.innerHTML = "そっちね！(未実装)";
-	selecttest.appendChild(option_map);
-	
-	var option_lv5 = document.createElement("option");
-	option_lv5.value = 3;
-	option_lv5.innerHTML = "いえい！(LV5先行勝率計算)";
-	selecttest.appendChild(option_lv5);
-	
-	var option_sal = document.createElement("option");
-	option_sal.value = 8;
-	option_sal.innerHTML = "ｼｭｰﾃｨﾝ!!(対戦履歴保存&読込)";
-	selecttest.appendChild(option_sal);
-	
-	var option_del = document.createElement("option");
-	option_del.value = 9;
-	option_del.innerHTML = "ﾖｯｹﾛｰ!!(保存データ初期化)";
-	selecttest.appendChild(option_del);
-	
-	var option_nan = document.createElement("option");
-	option_nan.value = 10;
-	option_nan.innerHTML = "ﾅﾝﾃﾞｯ!!(更新情報)";
-	selecttest.appendChild(option_nan);
-	
-	inspos.parentNode.insertBefore(selecttest, inspos);
-	
-	// 試合結果表示
-	gameNode = document.createElement("div");
-	gameNode.className = "frame02_1";
-	gameNode.style.marginTop = "72px";
-	gameNode.style.marginBottom = "136px";
-	
-	nodetitle1 = document.createElement("div");
-	nodetitle1.className = "frame02_1_title";
-	nodetitle1.innerHTML = "試合結果（平均データ）";
-	gameNode.appendChild(nodetitle1);
-	
-	// 使用キャスト画像を表示
-	for(var cnt=0; cnt < cast_cnt; cnt++){
-		imgNode_cast[cnt] = document.createElement("img");
-		imgNode_cast[cnt].src = cast_result[cnt][0];
-		imgNode_cast[cnt].width = icon_width;
-		imgNode_cast[cnt].height = icon_height;
+	try{
+		inspos = document.getElementById("page_title");
 		
-		var linkNode = document.createElement("a");
-		linkNode.href = "JavaScript:changesum(" + cnt.toString() + ")";
-		linkNode.appendChild(imgNode_cast[cnt]);
-		gameNode.appendChild(linkNode);
-	}
-	
-	// インナー定義
-	innerNode = document.createElement("div");
-	innerNode.className = "frame_inner";
-	
-	addNode("対象試合数", cast_result[0][1], 0, "result");
-	addNode("勝利数(合計)", cast_result[0][2], 1, "result");
-	addNode("敗北数(合計)", cast_result[0][3], 2, "result");
-	addNode("勝率", (cast_result[0][2]*100/battle_cnt).toFixed() + "%", 3, "result");
-	addNode("兵士撃破数", Math.floor(cast_result[0][18]/battle_cnt) + "体", 16, "result");
-	addNode("キャスト撃破数", (Math.floor((cast_result[0][19]/battle_cnt)*10))/10 + "体", 17, "result");
-	//addNode("巨人撃破数", (Math.floor((cast_result[0][20]/battle_cnt)*10))/10 + "体", 18, "result");
-	addNode("撤退数", (Math.floor((cast_result[0][21]/battle_cnt)*10))/10 + "回", 19, "result");
-	
-	// 0除算はいけないことなので阻止する
-	if(cast_result[0][21] != 0){
-		addNode("キルレ", (Math.floor((cast_result[0][19]/cast_result[0][21])*100))/100, 20, "result");
-	} else {
-		addNode("キルレ", "撤退数0！", 20, "result");
-	}
-	addNode("SS使用/HIT数", (Math.floor((cast_result[0][22]/battle_cnt)*10))/10 + "回" + "/" + (Math.floor((cast_result[0][23]/battle_cnt)*10))/10 + "回", 21, "result");
-	addNode("DS使用/HIT数", (Math.floor((cast_result[0][24]/battle_cnt)*10))/10 + "回" + "/" + (Math.floor((cast_result[0][25]/battle_cnt)*10))/10 + "回", 23, "result");
-	addNode("帰城数", (Math.floor((cast_result[0][26]/battle_cnt)*10))/10 + "回", 25, "result");
-	addNode("SS被弾数", (Math.floor((cast_result[0][27]/battle_cnt)*10))/10 + "回", 26, "result");
-	addNode("DS被弾数", (Math.floor((cast_result[0][28]/battle_cnt)*10))/10 + "回", 27, "result");
-	//addNode("拠点破壊数", (Math.floor((cast_result[0][29]/battle_cnt)*10))/10 + "個", 28, "result");
-	//addNode("入手経験値量", (Math.floor((cast_result[0][30]/battle_cnt)*10))/10, 29, "result");
-	addNode("LV2時間(味/敵)", lvuptime(cast_result[0][4], battle_cnt) + "/" + lvuptime(cast_result[0][11], battle_cnt), 4, "result");
-	addNode("LV3時間(味/敵)", lvuptime(cast_result[0][5], battle_cnt) + "/" + lvuptime(cast_result[0][12], battle_cnt), 5, "result");
-	addNode("LV4時間(味/敵)", lvuptime(cast_result[0][6], battle_cnt) + "/" + lvuptime(cast_result[0][13], battle_cnt), 6, "result");
-	addNode("LV5時間(味/敵)", lvuptime(cast_result[0][7], battle_cnt) + "/" + lvuptime(cast_result[0][14], battle_cnt), 7, "result");
-	addNode("LV6時間(味/敵)", lvuptime(cast_result[0][8], battle_cnt) + "/" + lvuptime(cast_result[0][15], battle_cnt), 8, "result");
-	addNode("LV7時間(味/敵)", lvuptime(cast_result[0][9], battle_cnt) + "/" + lvuptime(cast_result[0][16], battle_cnt), 9, "result");
-	
-	// スキル使用回数のタイトルを作成
-	skillNode = document.createElement("div");
-	skillNode.className = "frame02_1";
-	skillNode.style.marginTop = "72px";
-	skillNode.style.marginBottom = "136px";
-	
-	nodetitle2 = document.createElement("div");
-	nodetitle2.className = "frame02_1_title";
-	nodetitle2.innerHTML = "スキル使用回数";
-	skillNode.appendChild(nodetitle2);
-	
-	// 使用キャスト画像を表示
-	for(var cnt=0; cnt < cast_cnt; cnt++){
-		imgNode_skill[cnt] = document.createElement("img");
-		imgNode_skill[cnt].src = cast_result[cnt][0];
+		// タイトルを表示
+		textNode.innerHTML = "本気でやっつけてやるんだから！"
+		textNode.id = "page_title";
+		inspos.parentNode.insertBefore(textNode, inspos);
 		
-		imgNode_skill[cnt].width = icon_width;
-		imgNode_skill[cnt].height = icon_height;
+		selecttest = document.createElement("select");
+		selecttest.className = "select02";
+		selecttest.setAttribute("onchange", "select_fun(this.value)");
 		
-		var linkNode = document.createElement("a");
-		linkNode.href = "JavaScript:changesum(" + cnt.toString() + ")";
-		linkNode.appendChild(imgNode_skill[cnt]);
-		skillNode.appendChild(linkNode);
-	}
-	
-	addNode("対象試合数", "キャストを選択してください", 0, "skill");
-	addNode("DS使用数（平均）", "", 1, "skill");
-	addNode("↓スキル使用回数", "", 2, "skill");
-	
-	// スキル枠初期化
-	dtlNode = document.createElement("div");
-	dtlNode.className = "mtc_detail_skill";
-	dtlNode.style.position = "static";
-	dtlNode.style.width = "100%";
-	
-	// 枠の確保
-	addCard(nocard_img, "", 0, "skill");
-	addCard(nocard_img, "", 1, "skill");
-	addCard(nocard_img, "", 2, "skill");
-	addCard(nocard_img, "", 3, "skill");
-	addCard(nocard_img, "", 4, "skill");
-	
-	skillNode.appendChild(dtlNode);
-	
-	// マッチングキャストごと
-	castNode = document.createElement("div");
-	castNode.className = "frame02_1"
-	castNode.style.marginTop = "72px";
-	castNode.style.marginBottom = "136px";
-	
-	nodetitle3 = document.createElement("div");
-	nodetitle3.className = "frame02_1_title";
-	nodetitle3.innerHTML = "マッチングキャストデータ";
-	castNode.appendChild(nodetitle3);
-	
-	// 使用キャスト画像を表示
-	for(var cnt=0; cnt < match_cast_cnt; cnt++){
-		imgNode_other[cnt] = document.createElement("img");
-		imgNode_other[cnt].src = match_cast_result[cnt][0];
-		imgNode_other[cnt].width = icon_width;
-		imgNode_other[cnt].height = icon_height;
+		var option_def = document.createElement("option");
+		option_def.value = 0;
+		option_def.innerHTML = "オプション機能(テスト中の機能)";
+		selecttest.appendChild(option_def);
 		
-		var linkNode = document.createElement("a");
-		linkNode.href = "JavaScript:changeother(" + cnt.toString() + ")";
-		linkNode.appendChild(imgNode_other[cnt]);
-		castNode.appendChild(linkNode);
-	}
-	
-	// 項目情報
-	addNode("マッチング回数", "0" + "回", 0, "cast");
-	addNode("登場率", "0" + "%", 1, "cast");
-	addNode("↓スキル採用率", "", 2, "cast");
-	
-	// スキル枠確保
-	dtlNode = document.createElement("div");
-	dtlNode.className = "mtc_detail_skill";
-	dtlNode.style.position = "static";
-	dtlNode.style.width = "100%";
-	dtlNode.style.marginBottom = margin_bot;
-	
-	addCard(nocard_img, "", 0, "cast");
-	addCard(nocard_img, "", 1, "cast");
-	addCard(nocard_img, "", 2, "cast");
-	addCard(nocard_img, "", 3, "cast");
-	addCard(nocard_img, "", 4, "cast");
-	castNode.appendChild(dtlNode);
-	
-	addNode("↓アシスト採用率", "", 3, "cast");
-	
-	dtlNode = document.createElement("div");
-	dtlNode.className = "mtc_detail_skill";
-	dtlNode.style.position = "static";
-	dtlNode.style.width = "100%";
-	dtlNode.style.marginBottom = margin_bot;
-	
-	addCard(nocard_img, "", 5, "cast");
-	addCard(nocard_img, "", 6, "cast");
-	addCard(nocard_img, "", 7, "cast");
-	addCard(nocard_img, "", 8, "cast");
-	addCard(nocard_img, "", 9, "cast");
-	addCard(nocard_img, "", 10, "cast");
-	addCard(nocard_img, "", 11, "cast");
-	addCard(nocard_img, "", 12, "cast");
-	castNode.appendChild(dtlNode);
-	
-	// ソウル表示
-	addNode("↓ソウル採用率", "", 4, "cast");
-	
-	dtlNode = document.createElement("div");
-	dtlNode.className = "mtc_detail_skill";
-	dtlNode.style.position = "static";
-	dtlNode.style.width = "100%";
-	dtlNode.style.marginBottom = margin_bot;
-	
-	addCard(nocard_img, "", 13, "cast");
-	addCard(nocard_img, "", 14, "cast");
-	addCard(nocard_img, "", 15, "cast");
-	addCard(nocard_img, "", 16, "cast");
-	addCard(nocard_img, "", 17, "cast");
-	castNode.appendChild(dtlNode);
-	
-	// キャスト登場率ランキング
-	addNode("登場数ランキング", "対象試合数:" + battle_cnt, 5, "cast");
-	
-	dtlNode = document.createElement("div");
-	dtlNode.className = "mtc_detail_skill";
-	dtlNode.style.position = "static";
-	dtlNode.style.width = "100%";
-	dtlNode.style.marginBottom = margin_bot;
-	
-	var getrank_ary = [];
-	getrank_ary = card_ranking( "", 5, "castapp");
-	if(getrank_ary == -1){
-		cast_ary[0].innerHTML = "COM戦のみ";
-	} else {
-		addCard(match_cast_result[getrank_ary[0]][0], "", 50, "cast");
-		castcardcnt_ary[50].innerHTML = match_cast_result[getrank_ary[0]][1] + "回";
-		addCard(match_cast_result[getrank_ary[1]][0], "", 51, "cast");
-		castcardcnt_ary[51].innerHTML = match_cast_result[getrank_ary[1]][1] + "回";
-		addCard(match_cast_result[getrank_ary[2]][0], "", 52, "cast");
-		castcardcnt_ary[52].innerHTML = match_cast_result[getrank_ary[2]][1] + "回";
-		addCard(match_cast_result[getrank_ary[3]][0], "", 53, "cast");
-		castcardcnt_ary[53].innerHTML = match_cast_result[getrank_ary[3]][1] + "回";
-		addCard(match_cast_result[getrank_ary[4]][0], "", 54, "cast");
-		castcardcnt_ary[54].innerHTML = match_cast_result[getrank_ary[4]][1] + "回";
+		var option_now = document.createElement("option");
+		option_now.value = 1;
+		option_now.innerHTML = "わかったよー！(最新日のみ集計)";
+		selecttest.appendChild(option_now);
+		
+		var option_map = document.createElement("option");
+		option_map.value = 2;
+		option_map.innerHTML = "そっちね！(未実装)";
+		selecttest.appendChild(option_map);
+		
+		var option_lv5 = document.createElement("option");
+		option_lv5.value = 3;
+		option_lv5.innerHTML = "いえい！(LV5先行勝率計算)";
+		selecttest.appendChild(option_lv5);
+		
+		var option_sal = document.createElement("option");
+		option_sal.value = 8;
+		option_sal.innerHTML = "ｼｭｰﾃｨﾝ!!(対戦履歴保存&読込)";
+		selecttest.appendChild(option_sal);
+		
+		var option_del = document.createElement("option");
+		option_del.value = 9;
+		option_del.innerHTML = "ﾖｯｹﾛｰ!!(保存データ初期化)";
+		selecttest.appendChild(option_del);
+		
+		var option_nan = document.createElement("option");
+		option_nan.value = 10;
+		option_nan.innerHTML = "ﾅﾝﾃﾞｯ!!(更新情報)";
+		selecttest.appendChild(option_nan);
+		
+		inspos.parentNode.insertBefore(selecttest, inspos);
+		
+		// 試合結果表示
+		gameNode = document.createElement("div");
+		gameNode.className = "frame02_1";
+		gameNode.style.marginTop = "72px";
+		gameNode.style.marginBottom = "136px";
+		
+		nodetitle1 = document.createElement("div");
+		nodetitle1.className = "frame02_1_title";
+		nodetitle1.innerHTML = "試合結果（平均データ）";
+		gameNode.appendChild(nodetitle1);
+		
+		// 使用キャスト画像を表示
+		for(var cnt=0; cnt < cast_cnt; cnt++){
+			imgNode_cast[cnt] = document.createElement("img");
+			imgNode_cast[cnt].src = cast_result[cnt][0];
+			imgNode_cast[cnt].width = icon_width;
+			imgNode_cast[cnt].height = icon_height;
+			
+			var linkNode = document.createElement("a");
+			linkNode.href = "JavaScript:changesum(" + cnt.toString() + ")";
+			linkNode.appendChild(imgNode_cast[cnt]);
+			gameNode.appendChild(linkNode);
+		}
+		
+		// インナー定義
+		innerNode = document.createElement("div");
+		innerNode.className = "frame_inner";
+		
+		addNode("対象試合数", cast_result[0][1], 0, "result");
+		addNode("勝利数(合計)", cast_result[0][2], 1, "result");
+		addNode("敗北数(合計)", cast_result[0][3], 2, "result");
+		addNode("勝率", (cast_result[0][2]*100/battle_cnt).toFixed() + "%", 3, "result");
+		addNode("兵士撃破数", Math.floor(cast_result[0][18]/battle_cnt) + "体", 16, "result");
+		addNode("キャスト撃破数", (Math.floor((cast_result[0][19]/battle_cnt)*10))/10 + "体", 17, "result");
+		//addNode("巨人撃破数", (Math.floor((cast_result[0][20]/battle_cnt)*10))/10 + "体", 18, "result");
+		addNode("撤退数", (Math.floor((cast_result[0][21]/battle_cnt)*10))/10 + "回", 19, "result");
+		
+		// 0除算はいけないことなので阻止する
+		if(cast_result[0][21] != 0){
+			addNode("キルレ", (Math.floor((cast_result[0][19]/cast_result[0][21])*100))/100, 20, "result");
+		} else {
+			addNode("キルレ", "撤退数0！", 20, "result");
+		}
+		addNode("SS使用/HIT数", (Math.floor((cast_result[0][22]/battle_cnt)*10))/10 + "回" + "/" + (Math.floor((cast_result[0][23]/battle_cnt)*10))/10 + "回", 21, "result");
+		addNode("DS使用/HIT数", (Math.floor((cast_result[0][24]/battle_cnt)*10))/10 + "回" + "/" + (Math.floor((cast_result[0][25]/battle_cnt)*10))/10 + "回", 23, "result");
+		addNode("帰城数", (Math.floor((cast_result[0][26]/battle_cnt)*10))/10 + "回", 25, "result");
+		addNode("SS被弾数", (Math.floor((cast_result[0][27]/battle_cnt)*10))/10 + "回", 26, "result");
+		addNode("DS被弾数", (Math.floor((cast_result[0][28]/battle_cnt)*10))/10 + "回", 27, "result");
+		//addNode("拠点破壊数", (Math.floor((cast_result[0][29]/battle_cnt)*10))/10 + "個", 28, "result");
+		//addNode("入手経験値量", (Math.floor((cast_result[0][30]/battle_cnt)*10))/10, 29, "result");
+		addNode("LV2時間(味/敵)", lvuptime(cast_result[0][4], battle_cnt) + "/" + lvuptime(cast_result[0][11], battle_cnt), 4, "result");
+		addNode("LV3時間(味/敵)", lvuptime(cast_result[0][5], battle_cnt) + "/" + lvuptime(cast_result[0][12], battle_cnt), 5, "result");
+		addNode("LV4時間(味/敵)", lvuptime(cast_result[0][6], battle_cnt) + "/" + lvuptime(cast_result[0][13], battle_cnt), 6, "result");
+		addNode("LV5時間(味/敵)", lvuptime(cast_result[0][7], battle_cnt) + "/" + lvuptime(cast_result[0][14], battle_cnt), 7, "result");
+		addNode("LV6時間(味/敵)", lvuptime(cast_result[0][8], battle_cnt) + "/" + lvuptime(cast_result[0][15], battle_cnt), 8, "result");
+		addNode("LV7時間(味/敵)", lvuptime(cast_result[0][9], battle_cnt) + "/" + lvuptime(cast_result[0][16], battle_cnt), 9, "result");
+		
+		// スキル使用回数のタイトルを作成
+		skillNode = document.createElement("div");
+		skillNode.className = "frame02_1";
+		skillNode.style.marginTop = "72px";
+		skillNode.style.marginBottom = "136px";
+		
+		nodetitle2 = document.createElement("div");
+		nodetitle2.className = "frame02_1_title";
+		nodetitle2.innerHTML = "スキル使用回数";
+		skillNode.appendChild(nodetitle2);
+		
+		// 使用キャスト画像を表示
+		for(var cnt=0; cnt < cast_cnt; cnt++){
+			imgNode_skill[cnt] = document.createElement("img");
+			imgNode_skill[cnt].src = cast_result[cnt][0];
+			
+			imgNode_skill[cnt].width = icon_width;
+			imgNode_skill[cnt].height = icon_height;
+			
+			var linkNode = document.createElement("a");
+			linkNode.href = "JavaScript:changesum(" + cnt.toString() + ")";
+			linkNode.appendChild(imgNode_skill[cnt]);
+			skillNode.appendChild(linkNode);
+		}
+		
+		addNode("対象試合数", "キャストを選択してください", 0, "skill");
+		addNode("DS使用数（平均）", "", 1, "skill");
+		addNode("↓スキル使用回数", "", 2, "skill");
+		
+		// スキル枠初期化
+		dtlNode = document.createElement("div");
+		dtlNode.className = "mtc_detail_skill";
+		dtlNode.style.position = "static";
+		dtlNode.style.width = "100%";
+		
+		// 枠の確保
+		addCard(nocard_img, "", 0, "skill");
+		addCard(nocard_img, "", 1, "skill");
+		addCard(nocard_img, "", 2, "skill");
+		addCard(nocard_img, "", 3, "skill");
+		addCard(nocard_img, "", 4, "skill");
+		
+		skillNode.appendChild(dtlNode);
+		
+		// マッチングキャストごと
+		castNode = document.createElement("div");
+		castNode.className = "frame02_1"
+		castNode.style.marginTop = "72px";
+		castNode.style.marginBottom = "136px";
+		
+		nodetitle3 = document.createElement("div");
+		nodetitle3.className = "frame02_1_title";
+		nodetitle3.innerHTML = "マッチングキャストデータ";
+		castNode.appendChild(nodetitle3);
+		
+		// 使用キャスト画像を表示
+		for(var cnt=0; cnt < match_cast_cnt; cnt++){
+			imgNode_other[cnt] = document.createElement("img");
+			imgNode_other[cnt].src = match_cast_result[cnt][0];
+			imgNode_other[cnt].width = icon_width;
+			imgNode_other[cnt].height = icon_height;
+			
+			var linkNode = document.createElement("a");
+			linkNode.href = "JavaScript:changeother(" + cnt.toString() + ")";
+			linkNode.appendChild(imgNode_other[cnt]);
+			castNode.appendChild(linkNode);
+		}
+		
+		// 項目情報
+		addNode("マッチング回数", "0" + "回", 0, "cast");
+		addNode("登場率", "0" + "%", 1, "cast");
+		addNode("↓スキル採用率", "", 2, "cast");
+		
+		// スキル枠確保
+		dtlNode = document.createElement("div");
+		dtlNode.className = "mtc_detail_skill";
+		dtlNode.style.position = "static";
+		dtlNode.style.width = "100%";
+		dtlNode.style.marginBottom = margin_bot;
+		
+		addCard(nocard_img, "", 0, "cast");
+		addCard(nocard_img, "", 1, "cast");
+		addCard(nocard_img, "", 2, "cast");
+		addCard(nocard_img, "", 3, "cast");
+		addCard(nocard_img, "", 4, "cast");
 		castNode.appendChild(dtlNode);
+		
+		addNode("↓アシスト採用率", "", 3, "cast");
+		
+		dtlNode = document.createElement("div");
+		dtlNode.className = "mtc_detail_skill";
+		dtlNode.style.position = "static";
+		dtlNode.style.width = "100%";
+		dtlNode.style.marginBottom = margin_bot;
+		
+		addCard(nocard_img, "", 5, "cast");
+		addCard(nocard_img, "", 6, "cast");
+		addCard(nocard_img, "", 7, "cast");
+		addCard(nocard_img, "", 8, "cast");
+		addCard(nocard_img, "", 9, "cast");
+		addCard(nocard_img, "", 10, "cast");
+		addCard(nocard_img, "", 11, "cast");
+		addCard(nocard_img, "", 12, "cast");
+		castNode.appendChild(dtlNode);
+		
+		// ソウル表示
+		addNode("↓ソウル採用率", "", 4, "cast");
+		
+		dtlNode = document.createElement("div");
+		dtlNode.className = "mtc_detail_skill";
+		dtlNode.style.position = "static";
+		dtlNode.style.width = "100%";
+		dtlNode.style.marginBottom = margin_bot;
+		
+		addCard(nocard_img, "", 13, "cast");
+		addCard(nocard_img, "", 14, "cast");
+		addCard(nocard_img, "", 15, "cast");
+		addCard(nocard_img, "", 16, "cast");
+		addCard(nocard_img, "", 17, "cast");
+		castNode.appendChild(dtlNode);
+		
+		// キャスト登場率ランキング
+		addNode("登場数ランキング", "対象試合数:" + battle_cnt, 5, "cast");
+		
+		dtlNode = document.createElement("div");
+		dtlNode.className = "mtc_detail_skill";
+		dtlNode.style.position = "static";
+		dtlNode.style.width = "100%";
+		dtlNode.style.marginBottom = margin_bot;
+		
+		var getrank_ary = [];
+		getrank_ary = card_ranking( "", 5, "castapp");
+		if(getrank_ary == -1){
+			cast_ary[0].innerHTML = "COM戦のみ";
+		} else {
+			addCard(match_cast_result[getrank_ary[0]][0], "", 50, "cast");
+			castcardcnt_ary[50].innerHTML = match_cast_result[getrank_ary[0]][1] + "回";
+			addCard(match_cast_result[getrank_ary[1]][0], "", 51, "cast");
+			castcardcnt_ary[51].innerHTML = match_cast_result[getrank_ary[1]][1] + "回";
+			addCard(match_cast_result[getrank_ary[2]][0], "", 52, "cast");
+			castcardcnt_ary[52].innerHTML = match_cast_result[getrank_ary[2]][1] + "回";
+			addCard(match_cast_result[getrank_ary[3]][0], "", 53, "cast");
+			castcardcnt_ary[53].innerHTML = match_cast_result[getrank_ary[3]][1] + "回";
+			addCard(match_cast_result[getrank_ary[4]][0], "", 54, "cast");
+			castcardcnt_ary[54].innerHTML = match_cast_result[getrank_ary[4]][1] + "回";
+			castNode.appendChild(dtlNode);
+		}
+		
+		// ページに追加
+		gameNode.appendChild(innerNode);
+		inspos.parentNode.insertBefore(gameNode, inspos);
+		inspos.parentNode.insertBefore(skillNode, inspos);
+		inspos.parentNode.insertBefore(castNode, inspos);
+	} catch(e) {
+		errstr = e;
+		errnum = 9;
 	}
-	
-	// ページに追加
-	gameNode.appendChild(innerNode);
-	inspos.parentNode.insertBefore(gameNode, inspos);
-	inspos.parentNode.insertBefore(skillNode, inspos);
-	inspos.parentNode.insertBefore(castNode, inspos);
 }
 
 // 使用キャスト集計初期化処理
@@ -822,321 +927,334 @@ function cast_result_ini(ary_no){
 	var skillName_tmp = [];
 	var skillCnt_tmp = [];
 	var skillset = [];
-	
-	// 処理対象が全体の集計の場合は固定値
-	if(cast_cnt == 0){
-		// 集計用画像URLを格納
-		cast_tmp[0] = cast_url_plus + sum_img;
-	} else {
-		// キャスト画像URLを格納
-		cast_tmp[0] = cast_url_plus + result_battle[ary_no][5];
-	}
-	
-	// 使用回数カウントを初期化
-	cast_tmp[1] = 1;
-	
-	// 勝率計算
-	if(result_battle[ary_no][9] == "win"){
-		cast_tmp[2] = 1;
-		cast_tmp[3] = 0;
-	} else {
-		cast_tmp[2] = 0;
-		cast_tmp[3] = 1;
-	}
-	
-	// 味方レベルアップ時間
-	cast_tmp[4] = result_battle[ary_no][10][0] * battle_per;
-	cast_tmp[5] = result_battle[ary_no][10][1] * battle_per;
-	cast_tmp[6] = result_battle[ary_no][10][2] * battle_per;
-	cast_tmp[7] = result_battle[ary_no][10][3] * battle_per;
-	cast_tmp[8] = result_battle[ary_no][10][4] * battle_per;
-	cast_tmp[9] = result_battle[ary_no][10][5] * battle_per;
-	cast_tmp[10] = result_battle[ary_no][10][6] * battle_per;
-	
-	// 敵レベルアップ時間
-	cast_tmp[11] = result_battle[ary_no][11][0] * battle_per;
-	cast_tmp[12] = result_battle[ary_no][11][1] * battle_per;
-	cast_tmp[13] = result_battle[ary_no][11][2] * battle_per;
-	cast_tmp[14] = result_battle[ary_no][11][3] * battle_per;
-	cast_tmp[15] = result_battle[ary_no][11][4] * battle_per;
-	cast_tmp[16] = result_battle[ary_no][11][5] * battle_per;
-	cast_tmp[17] = result_battle[ary_no][11][6] * battle_per;
-	
-	// 兵士撃破数
-	cast_tmp[18] = parseInt(result_battle[ary_no][12]);
-	// キャスト撃破数
-	cast_tmp[19] = parseInt(result_battle[ary_no][13]);
-	// 巨人撃破数
-	cast_tmp[20] = parseInt(result_battle[ary_no][14]);
-	// 撤退数
-	cast_tmp[21] = parseInt(result_battle[ary_no][15]);
-	// ストレートショット数
-	cast_tmp[22] = parseInt(result_battle[ary_no][16]);
-	// ストレートショットHIT数
-	cast_tmp[23] = parseInt(result_battle[ary_no][17]);
-	// ドローショット数
-	cast_tmp[24] = parseInt(result_battle[ary_no][18]);
-	// ドローショットHIT数
-	cast_tmp[25] = parseInt(result_battle[ary_no][19]);
-	// 帰城数
-	cast_tmp[26] = parseInt(result_battle[ary_no][20]);
-	// ストレートショット被HIT数
-	cast_tmp[27] = parseInt(result_battle[ary_no][21]);
-	// ドローショット被HIT数
-	cast_tmp[28] = parseInt(result_battle[ary_no][22]);
-	// 拠点破壊数
-	cast_tmp[29] = parseInt(result_battle[ary_no][23]);
-	// 入手経験値
-	cast_tmp[30] = parseInt(result_battle[ary_no][24]);
-	
-	// スキルカード情報の初期化
-	for(var skillcnt = 0; skillcnt < 5; skillcnt++){
-		skillName_tmp[skillcnt] = nocard_img;
-		skillCnt_tmp[skillcnt] = 0;
-		skillset[skillcnt] = -1;
-	}
-	
-	// 処理対象が全体の集計の場合は初期値のまま
-	if(cast_cnt != 0){
-	// スキル情報の格納
-		for(skillcnt = 0; skillcnt < result_battle[ary_no][25][0].length; skillcnt++){
-			// スキル画像が空欄カードだった場合は処理を行わない（空欄後詰め処理）
-			if(result_battle[ary_no][25][0][skillcnt].toString() != nocard_img.toString()){
-				// スキル名格納
-				skillName_tmp[setcnt] = skill_url_plus + result_battle[ary_no][25][0][skillcnt];
-				// スキル使用回数格納
-				skillCnt_tmp[setcnt] = parseInt(result_battle[ary_no][25][1][skillcnt]);
-				skillset[setcnt] = 1;
-				setcnt++;
+	try{
+		// 処理対象が全体の集計の場合は固定値
+		if(cast_cnt == 0){
+			// 集計用画像URLを格納
+			cast_tmp[0] = cast_url_plus + sum_img;
+		} else {
+			// キャスト画像URLを格納
+			cast_tmp[0] = cast_url_plus + result_battle[ary_no][5];
+		}
+		
+		// 使用回数カウントを初期化
+		cast_tmp[1] = 1;
+		// 勝率計算
+		if(result_battle[ary_no][9] == "win"){
+			cast_tmp[2] = 1;
+			cast_tmp[3] = 0;
+		} else {
+			cast_tmp[2] = 0;
+			cast_tmp[3] = 1;
+		}
+		
+		// 味方レベルアップ時間
+		cast_tmp[4] = result_battle[ary_no][10][0] * battle_per;
+		cast_tmp[5] = result_battle[ary_no][10][1] * battle_per;
+		cast_tmp[6] = result_battle[ary_no][10][2] * battle_per;
+		cast_tmp[7] = result_battle[ary_no][10][3] * battle_per;
+		cast_tmp[8] = result_battle[ary_no][10][4] * battle_per;
+		cast_tmp[9] = result_battle[ary_no][10][5] * battle_per;
+		cast_tmp[10] = result_battle[ary_no][10][6] * battle_per;
+		
+		// 敵レベルアップ時間
+		cast_tmp[11] = result_battle[ary_no][11][0] * battle_per;
+		cast_tmp[12] = result_battle[ary_no][11][1] * battle_per;
+		cast_tmp[13] = result_battle[ary_no][11][2] * battle_per;
+		cast_tmp[14] = result_battle[ary_no][11][3] * battle_per;
+		cast_tmp[15] = result_battle[ary_no][11][4] * battle_per;
+		cast_tmp[16] = result_battle[ary_no][11][5] * battle_per;
+		cast_tmp[17] = result_battle[ary_no][11][6] * battle_per;
+		
+		// 兵士撃破数
+		cast_tmp[18] = parseInt(result_battle[ary_no][12]);
+		// キャスト撃破数
+		cast_tmp[19] = parseInt(result_battle[ary_no][13]);
+		// 巨人撃破数
+		cast_tmp[20] = parseInt(result_battle[ary_no][14]);
+		// 撤退数
+		cast_tmp[21] = parseInt(result_battle[ary_no][15]);
+		// ストレートショット数
+		cast_tmp[22] = parseInt(result_battle[ary_no][16]);
+		// ストレートショットHIT数
+		cast_tmp[23] = parseInt(result_battle[ary_no][17]);
+		// ドローショット数
+		cast_tmp[24] = parseInt(result_battle[ary_no][18]);
+		// ドローショットHIT数
+		cast_tmp[25] = parseInt(result_battle[ary_no][19]);
+		// 帰城数
+		cast_tmp[26] = parseInt(result_battle[ary_no][20]);
+		// ストレートショット被HIT数
+		cast_tmp[27] = parseInt(result_battle[ary_no][21]);
+		// ドローショット被HIT数
+		cast_tmp[28] = parseInt(result_battle[ary_no][22]);
+		// 拠点破壊数
+		cast_tmp[29] = parseInt(result_battle[ary_no][23]);
+		// 入手経験値
+		cast_tmp[30] = parseInt(result_battle[ary_no][24]);
+		
+		// スキルカード情報の初期化
+		for(var skillcnt = 0; skillcnt < 5; skillcnt++){
+			skillName_tmp[skillcnt] = nocard_img;
+			skillCnt_tmp[skillcnt] = 0;
+			skillset[skillcnt] = -1;
+		}
+		
+		// 処理対象が全体の集計の場合は初期値のまま
+		if(cast_cnt != 0){
+		// スキル情報の格納
+			for(skillcnt = 0; skillcnt < result_battle[ary_no][25][0].length; skillcnt++){
+				// スキル画像が空欄カードだった場合は処理を行わない（空欄後詰め処理）
+				if(result_battle[ary_no][25][0][skillcnt].toString() != nocard_img.toString()){
+					// スキル名格納
+					skillName_tmp[setcnt] = skill_url_plus + result_battle[ary_no][25][0][skillcnt];
+					// スキル使用回数格納
+					skillCnt_tmp[setcnt] = parseInt(result_battle[ary_no][25][1][skillcnt]);
+					skillset[setcnt] = 1;
+					setcnt++;
+				}
 			}
 		}
+		cast_result_skillset[cast_cnt] = skillset;
+		
+		// スキル情報をセット
+		cast_tmp[31] = skillName_tmp;
+		cast_tmp[32] = skillCnt_tmp;
+		
+		// キャスト集計結果の最初に集計を格納
+		cast_result[cast_cnt] = cast_tmp;
+		cast_cnt++;
+	} catch(e) {
+		errstr = "試合番号:" + ary_no + "\n\n" + e;
+		errnum = 6;
 	}
-	cast_result_skillset[cast_cnt] = skillset;
-	
-	// スキル情報をセット
-	cast_tmp[31] = skillName_tmp;
-	cast_tmp[32] = skillCnt_tmp;
-	
-	// キャスト集計結果の最初に集計を格納
-	cast_result[cast_cnt] = cast_tmp;
-	cast_cnt++;
 }
 
 // 使用キャスト集計処理
 function cast_result_add(cast_no, ary_no){
 	var cast_tmp = [];
 	
-	// 使用回数を加算
-	cast_result[cast_no][1]++;
-	// 勝率計算
-	if(result_battle[ary_no][9] == "win"){
-		cast_result[cast_no][2]++;
-	} else {
-		cast_result[cast_no][3]++;
-	}
-	// 味方レベルアップ時間
-	cast_result[cast_no][4] += result_battle[ary_no][10][0] * battle_per;
-	cast_result[cast_no][5] += result_battle[ary_no][10][1] * battle_per;
-	cast_result[cast_no][6] += result_battle[ary_no][10][2] * battle_per;
-	cast_result[cast_no][7] += result_battle[ary_no][10][3] * battle_per;
-	cast_result[cast_no][8] += result_battle[ary_no][10][4] * battle_per;
-	cast_result[cast_no][9] += result_battle[ary_no][10][5] * battle_per;
-	cast_result[cast_no][10] += result_battle[ary_no][10][6] * battle_per;
-	
-	// 敵レベルアップ時間
-	cast_result[cast_no][11] += result_battle[ary_no][11][0] * battle_per;
-	cast_result[cast_no][12] += result_battle[ary_no][11][1] * battle_per;
-	cast_result[cast_no][13] += result_battle[ary_no][11][2] * battle_per;
-	cast_result[cast_no][14] += result_battle[ary_no][11][3] * battle_per;
-	cast_result[cast_no][15] += result_battle[ary_no][11][4] * battle_per;
-	cast_result[cast_no][16] += result_battle[ary_no][11][5] * battle_per;
-	cast_result[cast_no][17] += result_battle[ary_no][11][6] * battle_per;
-	
-	// 兵士撃破数
-	cast_result[cast_no][18] += parseInt(result_battle[ary_no][12]);
-	// キャスト撃破数
-	cast_result[cast_no][19] += parseInt(result_battle[ary_no][13]);
-	// 巨人撃破数
-	cast_result[cast_no][20] += parseInt(result_battle[ary_no][14]);
-	// 撤退数
-	cast_result[cast_no][21] += parseInt(result_battle[ary_no][15]);
-	// ストレートショット数
-	cast_result[cast_no][22] += parseInt(result_battle[ary_no][16]);
-	// ストレートショットHIT数
-	cast_result[cast_no][23] += parseInt(result_battle[ary_no][17]);
-	// ドローショット数
-	cast_result[cast_no][24] += parseInt(result_battle[ary_no][18]);
-	// ドローショットHIT数
-	cast_result[cast_no][25] += parseInt(result_battle[ary_no][19]);
-	// 帰城数
-	cast_result[cast_no][26] += parseInt(result_battle[ary_no][20]);
-	// ストレートショット被HIT数
-	cast_result[cast_no][27] += parseInt(result_battle[ary_no][21]);
-	// ドローショット被HIT数
-	cast_result[cast_no][28] += parseInt(result_battle[ary_no][22]);
-	// 拠点破壊数
-	cast_result[cast_no][29] += parseInt(result_battle[ary_no][23]);
-	// 入手経験値
-	cast_result[cast_no][30] += parseInt(result_battle[ary_no][24]);
-	
-	// 全体の集計の場合はここで終了
-	if(cast_no == 0){
-		return;
-	}
-	
-	// スキル使用回数集計
-	for(var skillcnt = 0; skillcnt < result_battle[ary_no][25][0].length; skillcnt++){
-		// これまでに出現していないスキルカードの場合は0のまま
-		var chkcard_flg = 0;
+	try{
+		// 使用回数を加算
+		cast_result[cast_no][1]++;
+		// 勝率計算
+		if(result_battle[ary_no][9] == "win"){
+			cast_result[cast_no][2]++;
+		} else {
+			cast_result[cast_no][3]++;
+		}
+		// 味方レベルアップ時間
+		cast_result[cast_no][4] += result_battle[ary_no][10][0] * battle_per;
+		cast_result[cast_no][5] += result_battle[ary_no][10][1] * battle_per;
+		cast_result[cast_no][6] += result_battle[ary_no][10][2] * battle_per;
+		cast_result[cast_no][7] += result_battle[ary_no][10][3] * battle_per;
+		cast_result[cast_no][8] += result_battle[ary_no][10][4] * battle_per;
+		cast_result[cast_no][9] += result_battle[ary_no][10][5] * battle_per;
+		cast_result[cast_no][10] += result_battle[ary_no][10][6] * battle_per;
 		
-		// スキル画像が空欄カードだった場合は加算処理を行わない
-		if(result_battle[ary_no][25][0][skillcnt].toString() != nocard_img.toString()){
-			// 同名カードのチェック
-			for(var chkcnt = 0; chkcnt < cast_result[cast_no][31].length; chkcnt++){
-				// 同名カードがあった場合は加算処理
-				if(cast_result[cast_no][31][chkcnt] == skill_url_plus + result_battle[ary_no][25][0][skillcnt].toString()){
-					cast_result[cast_no][32][chkcnt] += parseInt(result_battle[ary_no][25][1][skillcnt]);
-					cast_result_skillset[cast_no][chkcnt]++;
-					chkcard_flg = 1;
-					break;
-				}
-			}
+		// 敵レベルアップ時間
+		cast_result[cast_no][11] += result_battle[ary_no][11][0] * battle_per;
+		cast_result[cast_no][12] += result_battle[ary_no][11][1] * battle_per;
+		cast_result[cast_no][13] += result_battle[ary_no][11][2] * battle_per;
+		cast_result[cast_no][14] += result_battle[ary_no][11][3] * battle_per;
+		cast_result[cast_no][15] += result_battle[ary_no][11][4] * battle_per;
+		cast_result[cast_no][16] += result_battle[ary_no][11][5] * battle_per;
+		cast_result[cast_no][17] += result_battle[ary_no][11][6] * battle_per;
+		
+		// 兵士撃破数
+		cast_result[cast_no][18] += parseInt(result_battle[ary_no][12]);
+		// キャスト撃破数
+		cast_result[cast_no][19] += parseInt(result_battle[ary_no][13]);
+		// 巨人撃破数
+		cast_result[cast_no][20] += parseInt(result_battle[ary_no][14]);
+		// 撤退数
+		cast_result[cast_no][21] += parseInt(result_battle[ary_no][15]);
+		// ストレートショット数
+		cast_result[cast_no][22] += parseInt(result_battle[ary_no][16]);
+		// ストレートショットHIT数
+		cast_result[cast_no][23] += parseInt(result_battle[ary_no][17]);
+		// ドローショット数
+		cast_result[cast_no][24] += parseInt(result_battle[ary_no][18]);
+		// ドローショットHIT数
+		cast_result[cast_no][25] += parseInt(result_battle[ary_no][19]);
+		// 帰城数
+		cast_result[cast_no][26] += parseInt(result_battle[ary_no][20]);
+		// ストレートショット被HIT数
+		cast_result[cast_no][27] += parseInt(result_battle[ary_no][21]);
+		// ドローショット被HIT数
+		cast_result[cast_no][28] += parseInt(result_battle[ary_no][22]);
+		// 拠点破壊数
+		cast_result[cast_no][29] += parseInt(result_battle[ary_no][23]);
+		// 入手経験値
+		cast_result[cast_no][30] += parseInt(result_battle[ary_no][24]);
+		
+		// 全体の集計の場合はここで終了
+		if(cast_no == 0){
+			return;
+		}
+		
+		// スキル使用回数集計
+		for(var skillcnt = 0; skillcnt < result_battle[ary_no][25][0].length; skillcnt++){
+			// これまでに出現していないスキルカードの場合は0のまま
+			var chkcard_flg = 0;
 			
-			// まだ集計していないカードの場合
-			if(chkcard_flg == 0){
-				// 新カードURLと使用回数を格納する
-				for(chkcnt = 0; chkcnt < cast_result[cast_no][31].length; chkcnt++){
-					// まだカード情報が初期化されたままの最初の箇所に置き換える
-					if(cast_result[cast_no][31][chkcnt].toString() == nocard_img.toString()){
-						cast_result[cast_no][31][chkcnt] = skill_url_plus + result_battle[ary_no][25][0][skillcnt];
-						cast_result[cast_no][32][chkcnt] = parseInt(result_battle[ary_no][25][1][skillcnt]);
-						cast_result_skillset[cast_no][chkcnt] = 1;
+			// スキル画像が空欄カードだった場合は加算処理を行わない
+			if(result_battle[ary_no][25][0][skillcnt].toString() != nocard_img.toString()){
+				// 同名カードのチェック
+				for(var chkcnt = 0; chkcnt < cast_result[cast_no][31].length; chkcnt++){
+					// 同名カードがあった場合は加算処理
+					if(cast_result[cast_no][31][chkcnt] == skill_url_plus + result_battle[ary_no][25][0][skillcnt].toString()){
+						cast_result[cast_no][32][chkcnt] += parseInt(result_battle[ary_no][25][1][skillcnt]);
+						cast_result_skillset[cast_no][chkcnt]++;
+						chkcard_flg = 1;
 						break;
+					}
+				}
+				
+				// まだ集計していないカードの場合
+				if(chkcard_flg == 0){
+					// 新カードURLと使用回数を格納する
+					for(chkcnt = 0; chkcnt < cast_result[cast_no][31].length; chkcnt++){
+						// まだカード情報が初期化されたままの最初の箇所に置き換える
+						if(cast_result[cast_no][31][chkcnt].toString() == nocard_img.toString()){
+							cast_result[cast_no][31][chkcnt] = skill_url_plus + result_battle[ary_no][25][0][skillcnt];
+							cast_result[cast_no][32][chkcnt] = parseInt(result_battle[ary_no][25][1][skillcnt]);
+							cast_result_skillset[cast_no][chkcnt] = 1;
+							break;
+						}
 					}
 				}
 			}
 		}
+	} catch(e) {
+		errstr = "処理番号:" + ary_no + "\n\n" + e;
+		errnum = 7;
 	}
 }
 
 // マッチング相手の集計処理
 function match_cast_add(ary_no){
-	// マッチングキャスト上限の7キャスト分ループする、COMが含まれていても7回
-	for(var match_cnt = 0; match_cnt < result_battle[ary_no][26].length; match_cnt++){
-		var ary_tmp = [];
-		var chkcast_flg = 0;
-		
-		// COMチェック
-		if(result_battle[ary_no][26][match_cnt][0] == 0){
-			// 既に格納されている集計データの中で、既出キャストでないかのチェック。初回は0なので飛ばす
-			for(var cast_chk = 0; cast_chk < match_cast_cnt; cast_chk++){
-				// 既出キャストチェック
-				if(cast_url_plus + result_battle[ary_no][26][match_cnt][1].toString() == match_cast_result[cast_chk][0].toString()){
-					// 既出だった場合、キャスト出現数カウントを増加
-					match_cast_result[cast_chk][1]++;
-					
-					// ワンダースキルカードチェック
-					var chkcard_flg = 0;
-					// 今のところ複数は存在しないが、念のため（増えた場合は要確認）
-					for(var chkcard = 0; chkcard < match_cast_result[cast_chk][2].length; chkcard++){
-						// 既存の登録済みカードに存在するかのチェック
-						if(skill_url_plus + result_battle[ary_no][26][match_cnt][4][0].toString() == match_cast_result[cast_chk][2][chkcard].toString()){
-							match_cast_result[cast_chk][3][chkcard]++;
-							chkcard_flg = 1;
-							break;
-						}
-					}
-					// 新規ワンダースキルカードの場合は追加
-					if(chkcard_flg == 0){
-						match_cast_result[cast_chk][2].push(skill_url_plus + result_battle[ary_no][26][match_cnt][4][0]);
-						match_cast_result[cast_chk][3].push(1);
-					}
-					
-					// スキルカード1～3チェック、0番はワンダースキルなので飛ばす
-					for(var card_pos = 1; card_pos < 4; card_pos++){
-						var chkcard_flg = 0;
-						// 既存の登録済みカードに存在するかのチェック
-						for(var chkcard = 0; chkcard < match_cast_result[cast_chk][4].length; chkcard++){
-							if(skill_url_plus + result_battle[ary_no][26][match_cnt][4][card_pos].toString() == match_cast_result[cast_chk][4][chkcard].toString()){
-								match_cast_result[cast_chk][5][chkcard]++;
-								chkcard_flg = 1;
-								break;
-							}
-						}
-						// 新規スキルカードの場合は追加
-						if(chkcard_flg == 0){
-							match_cast_result[cast_chk][4].push(skill_url_plus + result_battle[ary_no][26][match_cnt][4][card_pos]);
-							match_cast_result[cast_chk][5].push(1);
-						}
-					}
-					
-					// アシストカード1～3チェック
-					for(var card_pos = 0; card_pos < 3; card_pos++){
-						var chkcard_flg = 0;
-						// 既存の登録済みカードに存在するかのチェック
-						for(var chkcard = 0; chkcard < match_cast_result[cast_chk][6].length; chkcard++){
-							if(assist_url_plus + result_battle[ary_no][26][match_cnt][5][card_pos].toString() == match_cast_result[cast_chk][6][chkcard].toString()){
-								match_cast_result[cast_chk][7][chkcard]++;
-								chkcard_flg = 1;
-								break;
-							}
-						}
-						// 新規アシストカードの場合は追加
-						if(chkcard_flg == 0){
-							match_cast_result[cast_chk][6].push(assist_url_plus + result_battle[ary_no][26][match_cnt][5][card_pos]);
-							match_cast_result[cast_chk][7].push(1);
-						}
-					}
-					
-					// ソウルカードチェック
-					var chkcard_flg = 0;
-					for(var chkcard = 0; chkcard < match_cast_result[cast_chk][8].length; chkcard++){
-						// 既存の登録済みカードに存在するかのチェック
-						if(soul_url_plus + result_battle[ary_no][26][match_cnt][6][0].toString() == match_cast_result[cast_chk][8][chkcard].toString()){
-							match_cast_result[cast_chk][9][chkcard]++;
-							chkcard_flg = 1;
-							break;
-						}
-					}
-					// 新規ソウルカードの場合は追加
-					if(chkcard_flg == 0){
-						match_cast_result[cast_chk][8].push(soul_url_plus + result_battle[ary_no][26][match_cnt][6][0]);
-						match_cast_result[cast_chk][9].push(1);
-					}
-					
-					// 既出キャラであったことのフラグ
-					chkcast_flg = 1;
-					break;
-				}
-			}
+	try {
+		// マッチングキャスト上限の7キャスト分ループする、COMが含まれていても7回
+		for(var match_cnt = 0; match_cnt < result_battle[ary_no][26].length; match_cnt++){
+			var ary_tmp = [];
+			var chkcast_flg = 0;
 			
-			// まだ登録されていないキャストの場合
-			if(chkcast_flg == 0){
-				// キャスト画像
-				ary_tmp[0] = cast_url_plus + result_battle[ary_no][26][match_cnt][1];
-				// キャスト登場回数
-				ary_tmp[1] = 1;
-				// ワンダースキル
-				ary_tmp[2] = [skill_url_plus + result_battle[ary_no][26][match_cnt][4][0]];
-				ary_tmp[3] = [1];
-				// スキル
-				ary_tmp[4] = [skill_url_plus + result_battle[ary_no][26][match_cnt][4][1], skill_url_plus + result_battle[ary_no][26][match_cnt][4][2], skill_url_plus + result_battle[ary_no][26][match_cnt][4][3]]
-				ary_tmp[5] = [1, 1, 1];
-				// アシスト
-				ary_tmp[6] = [assist_url_plus + result_battle[ary_no][26][match_cnt][5][0], assist_url_plus + result_battle[ary_no][26][match_cnt][5][1], assist_url_plus + result_battle[ary_no][26][match_cnt][5][2]];
-				ary_tmp[7] = [1, 1, 1];
-				// ソウル
-				ary_tmp[8] = [soul_url_plus + result_battle[ary_no][26][match_cnt][6][0]];
-				ary_tmp[9] = [1];
-				match_cast_result[match_cast_cnt] = ary_tmp;
-				// キャストの登録番号を進める
-				match_cast_cnt++;
+			// COMチェック
+			if(result_battle[ary_no][26][match_cnt][0] == 0){
+				// 既に格納されている集計データの中で、既出キャストでないかのチェック。初回は0なので飛ばす
+				for(var cast_chk = 0; cast_chk < match_cast_cnt; cast_chk++){
+					// 既出キャストチェック
+					if(cast_url_plus + result_battle[ary_no][26][match_cnt][1].toString() == match_cast_result[cast_chk][0].toString()){
+						// 既出だった場合、キャスト出現数カウントを増加
+						match_cast_result[cast_chk][1]++;
+						
+						// ワンダースキルカードチェック
+						var chkcard_flg = 0;
+						// 今のところ複数は存在しないが、念のため（増えた場合は要確認）
+						for(var chkcard = 0; chkcard < match_cast_result[cast_chk][2].length; chkcard++){
+							// 既存の登録済みカードに存在するかのチェック
+							if(skill_url_plus + result_battle[ary_no][26][match_cnt][4][0].toString() == match_cast_result[cast_chk][2][chkcard].toString()){
+								match_cast_result[cast_chk][3][chkcard]++;
+								chkcard_flg = 1;
+								break;
+							}
+						}
+						// 新規ワンダースキルカードの場合は追加
+						if(chkcard_flg == 0){
+							match_cast_result[cast_chk][2].push(skill_url_plus + result_battle[ary_no][26][match_cnt][4][0]);
+							match_cast_result[cast_chk][3].push(1);
+						}
+						
+						// スキルカード1～3チェック、0番はワンダースキルなので飛ばす
+						for(var card_pos = 1; card_pos < 4; card_pos++){
+							var chkcard_flg = 0;
+							// 既存の登録済みカードに存在するかのチェック
+							for(var chkcard = 0; chkcard < match_cast_result[cast_chk][4].length; chkcard++){
+								if(skill_url_plus + result_battle[ary_no][26][match_cnt][4][card_pos].toString() == match_cast_result[cast_chk][4][chkcard].toString()){
+									match_cast_result[cast_chk][5][chkcard]++;
+									chkcard_flg = 1;
+									break;
+								}
+							}
+							// 新規スキルカードの場合は追加
+							if(chkcard_flg == 0){
+								match_cast_result[cast_chk][4].push(skill_url_plus + result_battle[ary_no][26][match_cnt][4][card_pos]);
+								match_cast_result[cast_chk][5].push(1);
+							}
+						}
+						
+						// アシストカード1～3チェック
+						for(var card_pos = 0; card_pos < 3; card_pos++){
+							var chkcard_flg = 0;
+							// 既存の登録済みカードに存在するかのチェック
+							for(var chkcard = 0; chkcard < match_cast_result[cast_chk][6].length; chkcard++){
+								if(assist_url_plus + result_battle[ary_no][26][match_cnt][5][card_pos].toString() == match_cast_result[cast_chk][6][chkcard].toString()){
+									match_cast_result[cast_chk][7][chkcard]++;
+									chkcard_flg = 1;
+									break;
+								}
+							}
+							// 新規アシストカードの場合は追加
+							if(chkcard_flg == 0){
+								match_cast_result[cast_chk][6].push(assist_url_plus + result_battle[ary_no][26][match_cnt][5][card_pos]);
+								match_cast_result[cast_chk][7].push(1);
+							}
+						}
+						
+						// ソウルカードチェック
+						var chkcard_flg = 0;
+						for(var chkcard = 0; chkcard < match_cast_result[cast_chk][8].length; chkcard++){
+							// 既存の登録済みカードに存在するかのチェック
+							if(soul_url_plus + result_battle[ary_no][26][match_cnt][6][0].toString() == match_cast_result[cast_chk][8][chkcard].toString()){
+								match_cast_result[cast_chk][9][chkcard]++;
+								chkcard_flg = 1;
+								break;
+							}
+						}
+						// 新規ソウルカードの場合は追加
+						if(chkcard_flg == 0){
+							match_cast_result[cast_chk][8].push(soul_url_plus + result_battle[ary_no][26][match_cnt][6][0]);
+							match_cast_result[cast_chk][9].push(1);
+						}
+						
+						// 既出キャラであったことのフラグ
+						chkcast_flg = 1;
+						break;
+					}
+				}
+				
+				// まだ登録されていないキャストの場合
+				if(chkcast_flg == 0){
+					// キャスト画像
+					ary_tmp[0] = cast_url_plus + result_battle[ary_no][26][match_cnt][1];
+					// キャスト登場回数
+					ary_tmp[1] = 1;
+					// ワンダースキル
+					ary_tmp[2] = [skill_url_plus + result_battle[ary_no][26][match_cnt][4][0]];
+					ary_tmp[3] = [1];
+					// スキル
+					ary_tmp[4] = [skill_url_plus + result_battle[ary_no][26][match_cnt][4][1], skill_url_plus + result_battle[ary_no][26][match_cnt][4][2], skill_url_plus + result_battle[ary_no][26][match_cnt][4][3]]
+					ary_tmp[5] = [1, 1, 1];
+					// アシスト
+					ary_tmp[6] = [assist_url_plus + result_battle[ary_no][26][match_cnt][5][0], assist_url_plus + result_battle[ary_no][26][match_cnt][5][1], assist_url_plus + result_battle[ary_no][26][match_cnt][5][2]];
+					ary_tmp[7] = [1, 1, 1];
+					// ソウル
+					ary_tmp[8] = [soul_url_plus + result_battle[ary_no][26][match_cnt][6][0]];
+					ary_tmp[9] = [1];
+					match_cast_result[match_cast_cnt] = ary_tmp;
+					// キャストの登録番号を進める
+					match_cast_cnt++;
+				}
+				// COMはマッチングキャスト数に数えない（キャスト出現率の処理の都合上）
+				match_cast_sum++;
+			} else {
+				// COMの場合 COMとのマッチング時に何か欲しい時に
 			}
-			// COMはマッチングキャスト数に数えない（キャスト出現率の処理の都合上）
-			match_cast_sum++;
-		} else {
-			// COMの場合 COMとのマッチング時に何か欲しい時に
 		}
+	} catch(e) {
+		errstr = "処理番号:" + ary_no + "\n\n" + e;
+		errnum = 8;
 	}
 }
 
@@ -1438,9 +1556,6 @@ function addCard(imgurl, usecnt, node_no, mode){
 		tmpImg1.setAttribute("height", card_height);
 	}
 	
-	//tmpImg1.width = 60;
-	//tmpImg1.height = 84;
-	
 	var tmpNode1 = document.createElement("div");
 	tmpNode1.className = "mtc_detail_skill_count";
 	tmpNode1.innerHTML = usecnt;
@@ -1469,14 +1584,13 @@ function select_fun(getno){
 	var lsmap_name = "honkide_map";
 	var lsdata_name = "honkide_data";
 	
-	if(errnum != 0){
-		alert("エラーを検出しているため、オプション機能の実行は行えません。\nエラー番号：" + errnum);
-		return;
-	}
-	
 	if(getno == 0){
 		// 何もしない
 	} else if(getno == 1){
+		if(errnum != 0){
+			alert("実行時にエラーが発生しています。\nエラー発生時にこの機能は使用できません。\nエラーメッセージ:\n" + errmsg[errnum]);
+			return;
+		}
 		if(window.confirm("注意：テスト機能のため、結果や動作のチェックが甘いです。\n最新の入国した日を対象に集計処理します。\n一日に20戦以上した場合は変わりません。")){
 			// 表示の削除処理
 			inspos.parentNode.removeChild(textNode);
@@ -1543,6 +1657,10 @@ function select_fun(getno){
 		// 絞った状態で保存は止める
 		if(betatest_flg != 0){
 			alert("一部のオプション機能実行後に、続けて保存することはできません。\n保存＆読込処理を行いたい場合は最初に行ってください。");
+			return;
+		}
+		if(errnum != 0){
+			alert("実行時にエラーが発生しています。\nエラー発生時にこの機能は使用できません。\nエラーメッセージ:\n" + errmsg[errnum]);
 			return;
 		}
 		// ローカルストレージに保存する処理
@@ -1680,7 +1798,7 @@ function select_fun(getno){
 			alert(lsdata_getcnt + "件のデータを削除しました。");
 		}
 	} else if(getno == 10){
-		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/1です。\n表示項目の桁数を変更しました。\nスキル使用回数の計算処理を変更しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/3です。\nエラー発生時の処理を追加しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
 	}
 }
 
