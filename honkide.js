@@ -178,7 +178,7 @@ var errmsg = [
 // 本処理
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
-	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/3");
+	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/5");
 	// 対戦履歴のページ数だけ処理する
 	for(var linkcnt=0; linkcnt < document.links.length; linkcnt++){
 		urlstr = document.links[linkcnt].toString();
@@ -686,6 +686,11 @@ function hyouji(){
 		option_lv5.value = 3;
 		option_lv5.innerHTML = "いえい！(LV5先行勝率計算)";
 		selecttest.appendChild(option_lv5);
+		
+		var option_asi = document.createElement("option");
+		option_asi.value = 4;
+		option_asi.innerHTML = "月に叢雲(ファイターに蓬莱)";
+		selecttest.appendChild(option_asi);
 		
 		var option_sal = document.createElement("option");
 		option_sal.value = 8;
@@ -1653,6 +1658,70 @@ function select_fun(getno){
 		} else {
 			return;
 		}
+	} else if(getno == 4){
+		var asicnt_ary = [0,0,0,0,0];
+		var asitime_ary = [0,0,0,0,0];
+		var asitime_jikan = [];
+		asi_cnt = 0;
+		assist_name = "40fccec8d9cb07df38aa92bff5cc286f.png";
+		
+		alert("注意：テスト機能のため、結果や動作のチェックが甘いです。\n\n 蓬莱の玉の枝の数による、Lv5アップ平均時間比較です。\n味方や敵を区別しないチーム単位での平均値です。\n本当にファイターが装備しているのかは考慮していません。");
+		try{
+			for(var cnt = 0; cnt < battle_cnt; cnt++){
+				// プレイヤーを集計
+				for(var card_pos = 0; card_pos < 3; card_pos++){
+					if(result_battle[cnt][25][2][card_pos].toString().match(assist_name)){
+						asi_cnt++;
+					}
+				}
+				// 味方チームを集計
+				for(var mc_cnt = 0; mc_cnt < 3; mc_cnt++){
+					for(var card_pos = 0; card_pos < 3; card_pos++){
+						if(result_battle[cnt][26][mc_cnt][0] == 1){
+							break;
+						}
+						if(result_battle[cnt][26][mc_cnt][5][card_pos].toString().match(assist_name)){
+							asi_cnt++;
+						}
+					}
+				}
+				asicnt_ary[asi_cnt]++;
+				asitime_ary[asi_cnt] += result_battle[cnt][10][3] * battle_per;
+				asi_cnt = 0;
+				// 敵チーム集計
+				for(var mc_cnt = 3; mc_cnt < 7; mc_cnt++){
+					for(var card_pos = 0; card_pos < 3; card_pos++){
+						if(result_battle[cnt][26][mc_cnt][0] == 1){
+							break;
+						}
+						if(result_battle[cnt][26][mc_cnt][5][card_pos].toString().match(assist_name)){
+							asi_cnt++;
+						}
+					}
+				}
+				asicnt_ary[asi_cnt]++;
+				asitime_ary[asi_cnt] += result_battle[cnt][11][3] * battle_per;
+				asi_cnt = 0;
+			}
+			// 結果を時刻に
+			for(cnt = 0; cnt < asicnt_ary.length; cnt++){
+				if(asicnt_ary[cnt] != 0){
+					asitime_ary[cnt] = lvuptime(asitime_ary[cnt], asicnt_ary[cnt]);
+				} else {
+					asitime_ary[cnt] = "No Data";
+				}
+			}
+			// 結果表示
+			alert(
+			"\n0蓬莱チーム数:" + asicnt_ary[0] + " | Lv5時間:" + asitime_ary[0] + 
+			"\n1蓬莱チーム数:" + asicnt_ary[1] + " | Lv5時間:" + asitime_ary[1] + 
+			"\n2蓬莱チーム数:" + asicnt_ary[2] + " | Lv5時間:" + asitime_ary[2] + 
+			"\n3蓬莱チーム数:" + asicnt_ary[3] + " | Lv5時間:" + asitime_ary[3] + 
+			"\n4蓬莱チーム数:" + asicnt_ary[4] + " | Lv5時間:" + asitime_ary[4] );
+		} catch(e) {
+			alert("処理中にエラーが発生したため終了します。\n\n" + e);
+		}
+		
 	} else if(getno == 8){
 		// 絞った状態で保存は止める
 		if(betatest_flg != 0){
@@ -1798,7 +1867,7 @@ function select_fun(getno){
 			alert(lsdata_getcnt + "件のデータを削除しました。");
 		}
 	} else if(getno == 10){
-		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/3です。\nエラー発生時の処理を追加しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/5です。\n月に叢雲、花に風\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
 	}
 }
 
