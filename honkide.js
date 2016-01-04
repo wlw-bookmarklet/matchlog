@@ -1712,7 +1712,7 @@ function select_fun(getno){
 				}
 			}
 			// 結果表示
-			alert(
+			alert("蓬莱の玉の枝本数別、Lv5到達平均時間\n" +
 			"\n0蓬莱チーム数:" + asicnt_ary[0] + " | Lv5時間:" + asitime_ary[0] + 
 			"\n1蓬莱チーム数:" + asicnt_ary[1] + " | Lv5時間:" + asitime_ary[1] + 
 			"\n2蓬莱チーム数:" + asicnt_ary[2] + " | Lv5時間:" + asitime_ary[2] + 
