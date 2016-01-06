@@ -178,7 +178,7 @@ var errmsg = [
 // 本処理
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
-	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/5");
+	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/6");
 	// 対戦履歴のページ数だけ処理する
 	for(var linkcnt=0; linkcnt < document.links.length; linkcnt++){
 		urlstr = document.links[linkcnt].toString();
@@ -1659,69 +1659,23 @@ function select_fun(getno){
 			return;
 		}
 	} else if(getno == 4){
-		var asicnt_ary = [0,0,0,0,0];
-		var asitime_ary = [0,0,0,0,0];
-		var asitime_jikan = [];
-		asi_cnt = 0;
-		assist_name = "40fccec8d9cb07df38aa92bff5cc286f.png";
+		var asi_name1 = "40fccec8d9cb07df38aa92bff5cc286f.png";
+		var asi_name2 = "a011a3e3393e878c050ff2cda3562bc7.png";
 		
-		alert("注意：テスト機能のため、結果や動作のチェックが甘いです。\n\n 蓬莱の玉の枝の数による、Lv5アップ平均時間比較です。\n味方や敵を区別しないチーム単位での平均値です。\n本当にファイターが装備しているのかは考慮していません。");
-		try{
-			for(var cnt = 0; cnt < battle_cnt; cnt++){
-				// プレイヤーを集計
-				for(var card_pos = 0; card_pos < 3; card_pos++){
-					if(result_battle[cnt][25][2][card_pos].toString().match(assist_name)){
-						asi_cnt++;
-					}
-				}
-				// 味方チームを集計
-				for(var mc_cnt = 0; mc_cnt < 3; mc_cnt++){
-					for(var card_pos = 0; card_pos < 3; card_pos++){
-						if(result_battle[cnt][26][mc_cnt][0] == 1){
-							break;
-						}
-						if(result_battle[cnt][26][mc_cnt][5][card_pos].toString().match(assist_name)){
-							asi_cnt++;
-						}
-					}
-				}
-				asicnt_ary[asi_cnt]++;
-				asitime_ary[asi_cnt] += result_battle[cnt][10][3] * battle_per;
-				asi_cnt = 0;
-				// 敵チーム集計
-				for(var mc_cnt = 3; mc_cnt < 7; mc_cnt++){
-					for(var card_pos = 0; card_pos < 3; card_pos++){
-						if(result_battle[cnt][26][mc_cnt][0] == 1){
-							break;
-						}
-						if(result_battle[cnt][26][mc_cnt][5][card_pos].toString().match(assist_name)){
-							asi_cnt++;
-						}
-					}
-				}
-				asicnt_ary[asi_cnt]++;
-				asitime_ary[asi_cnt] += result_battle[cnt][11][3] * battle_per;
-				asi_cnt = 0;
-			}
-			// 結果を時刻に
-			for(cnt = 0; cnt < asicnt_ary.length; cnt++){
-				if(asicnt_ary[cnt] != 0){
-					asitime_ary[cnt] = lvuptime(asitime_ary[cnt], asicnt_ary[cnt]);
-				} else {
-					asitime_ary[cnt] = "No Data";
-				}
-			}
+		alert("注意：テスト機能のため、結果や動作のチェックが甘いです。\n\n 蓬莱の玉の枝、青い羽のイヤリングの数による、\nLv5時平均残り時間比較です。\n味方や敵を区別しないチーム単位での平均値です。\n特殊効果発動ロールが装備しているのかは考慮していません。");
+		var asi_ary1 = team_result(asi_name1, 1);
+		var asi_ary2 = team_result(asi_name2, 1);
+		
+		if(asi_ary1 != false && asi_ary2 != false){
 			// 結果表示
-			alert("蓬莱の玉の枝本数別、Lv5到達の平均残り時間\n" +
-			"\n0蓬莱チーム数:" + asicnt_ary[0] + " | Lv5時間:" + asitime_ary[0] + 
-			"\n1蓬莱チーム数:" + asicnt_ary[1] + " | Lv5時間:" + asitime_ary[1] + 
-			"\n2蓬莱チーム数:" + asicnt_ary[2] + " | Lv5時間:" + asitime_ary[2] + 
-			"\n3蓬莱チーム数:" + asicnt_ary[3] + " | Lv5時間:" + asitime_ary[3] + 
-			"\n4蓬莱チーム数:" + asicnt_ary[4] + " | Lv5時間:" + asitime_ary[4] );
-		} catch(e) {
-			alert("処理中にエラーが発生したため終了します。\n\n" + e);
+			alert("蓬莱の玉の枝、青い羽のイヤリング\n装備数別のLv5到達平均残り時間比較\n" +
+			"\n0蓬莱 チーム数:" + asi_ary1[0][0] + " | Lv5残り時間:" + asi_ary1[1][0] + 
+			"\n1蓬莱 チーム数:" + asi_ary1[0][1] + " | Lv5残り時間:" + asi_ary1[1][1] + 
+			"\n2蓬莱 チーム数:" + asi_ary1[0][2] + " | Lv5残り時間:" + asi_ary1[1][2] + 
+			"\n0青い羽 チーム数:" + asi_ary2[0][0] + " | Lv5残り時間:" + asi_ary2[1][0] + 
+			"\n1青い羽 チーム数:" + asi_ary2[0][1] + " | Lv5残り時間:" + asi_ary2[1][1] + 
+			"\n2青い羽 チーム数:" + asi_ary2[0][2] + " | Lv5残り時間:" + asi_ary2[1][2] );
 		}
-		
 	} else if(getno == 8){
 		// 絞った状態で保存は止める
 		if(betatest_flg != 0){
@@ -1867,7 +1821,68 @@ function select_fun(getno){
 			alert(lsdata_getcnt + "件のデータを削除しました。");
 		}
 	} else if(getno == 10){
-		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/5です。\n月に叢雲、花に風\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/6です。\nファイター3人以上の試合は少ないため項目を削除し、\n代わりに青い羽のイヤリングを追加しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
 	}
 }
 
+function team_result(asiurl, mode){
+	var asicnt_ary = [0,0,0,0,0];
+	var asitime_ary = [0,0,0,0,0];
+	var asitime_result = [];
+	asi_cnt = 0;
+	
+	try{
+		for(var cnt = 0; cnt < battle_cnt; cnt++){
+			// プレイヤーを集計
+			for(var card_pos = 0; card_pos < 3; card_pos++){
+				if(result_battle[cnt][25][2][card_pos].toString().match(asiurl)){
+					asi_cnt++;
+				}
+			}
+			// 味方チームを集計
+			for(var mc_cnt = 0; mc_cnt < 3; mc_cnt++){
+				for(var card_pos = 0; card_pos < 3; card_pos++){
+					if(result_battle[cnt][26][mc_cnt][0] == 1){
+						break;
+					}
+					if(result_battle[cnt][26][mc_cnt][5][card_pos].toString().match(asiurl)){
+						asi_cnt++;
+					}
+				}
+			}
+			asicnt_ary[asi_cnt]++;
+			asitime_ary[asi_cnt] += result_battle[cnt][10][3] * battle_per;
+			asi_cnt = 0;
+			// 敵チーム集計
+			for(var mc_cnt = 3; mc_cnt < 7; mc_cnt++){
+				for(var card_pos = 0; card_pos < 3; card_pos++){
+					if(result_battle[cnt][26][mc_cnt][0] == 1){
+						break;
+					}
+					if(result_battle[cnt][26][mc_cnt][5][card_pos].toString().match(asiurl)){
+						asi_cnt++;
+					}
+				}
+			}
+			asicnt_ary[asi_cnt]++;
+			asitime_ary[asi_cnt] += result_battle[cnt][11][3] * battle_per;
+			asi_cnt = 0;
+		}
+		// 結果を時刻に
+		for(cnt = 0; cnt < asicnt_ary.length; cnt++){
+			if(asicnt_ary[cnt] != 0){
+				asitime_ary[cnt] = lvuptime(asitime_ary[cnt], asicnt_ary[cnt]);
+			} else {
+				asitime_ary[cnt] = "No Data";
+			}
+		}
+		
+		asitime_result[0] = asicnt_ary;
+		asitime_result[1] = asitime_ary;
+		
+		return asitime_result;
+	} catch(e) {
+		alert("処理中にエラーが発生したため終了します。\n\n" + e);
+		return false;
+	}
+}
