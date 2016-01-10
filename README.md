@@ -52,6 +52,10 @@ URL欄にブックマークレット登録名を入力すると、候補にこ�
 ![10](https://cloud.githubusercontent.com/assets/16392405/12037151/988d99fc-ae8f-11e5-885d-4909606329d6.jpg)
 ![4](https://cloud.githubusercontent.com/assets/16392405/12037201/0a71e4ba-ae90-11e5-9af8-6f78eecf2bc0.jpg)
 
+####不具合情報：
+　取得に失敗する形式の試合が存在する(COM6人戦が有力)。<br>
+※そういった旨のメッセージが表示された際に、該当の試合に心当たりがあれば教えていただけると助かります。<br>
+
 #####連絡先ツイッター：
 https://twitter.com/wlw_honkideya
 
