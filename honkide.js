@@ -3,6 +3,7 @@ javascript:
 // 実行するURL
 var starturl1 = "https://wonderland-wars.net/matchlog.html";
 var starturl2 = "https://wonderland-wars.net/matchlog.html?type=all";
+var butouurl1 = "https://wonderland-wars.net/matchlog.html?type=bb";
 
 // カード名取得用URL(ver=の部分は公式のタイミングによっては古いかも)
 var skill_listurl = "https://wonderland-wars.net/cardlist.html?ver=19&type=1";
@@ -113,9 +114,11 @@ var cast_cnt = 0;
 // キャスト重複チェック
 var cast_chkflg = -1;
 // マッチングキャスト累計
-match_cast_sum = 0;
+var match_cast_sum = 0;
 // マッチングキャストカウンタ
-match_cast_cnt = 0;
+var match_cast_cnt = 0;
+// 舞闘会モードフラグ
+var butou_flg = 0;
 
 // 結果を配列で格納する
 var result_battle = [];
@@ -178,7 +181,7 @@ var errmsg = [
 // 本処理
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
-	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/6");
+	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/11");
 	// 対戦履歴のページ数だけ処理する
 	for(var linkcnt=0; linkcnt < document.links.length; linkcnt++){
 		urlstr = document.links[linkcnt].toString();
@@ -692,15 +695,17 @@ function hyouji(){
 		option_asi.innerHTML = "月に叢雲(ファイターに蓬莱)";
 		selecttest.appendChild(option_asi);
 		
-		var option_sal = document.createElement("option");
-		option_sal.value = 8;
-		option_sal.innerHTML = "ｼｭｰﾃｨﾝ!!(対戦履歴保存&読込)";
-		selecttest.appendChild(option_sal);
-		
-		var option_del = document.createElement("option");
-		option_del.value = 9;
-		option_del.innerHTML = "ﾖｯｹﾛｰ!!(保存データ初期化)";
-		selecttest.appendChild(option_del);
+		if(butou_flg == 0){
+			var option_sal = document.createElement("option");
+			option_sal.value = 8;
+			option_sal.innerHTML = "ｼｭｰﾃｨﾝ!!(対戦履歴保存&読込)";
+			selecttest.appendChild(option_sal);
+			
+			var option_del = document.createElement("option");
+			option_del.value = 9;
+			option_del.innerHTML = "ﾖｯｹﾛｰ!!(保存データ初期化)";
+			selecttest.appendChild(option_del);
+		}
 		
 		var option_nan = document.createElement("option");
 		option_nan.value = 10;
@@ -900,6 +905,8 @@ function hyouji(){
 		getrank_ary = card_ranking( "", 5, "castapp");
 		if(getrank_ary == -1){
 			cast_ary[0].innerHTML = "COM戦のみ";
+		} else if(match_cast_result.length < 5){
+			cast_ary[5].innerHTML = "表示キャスト数不足";
 		} else {
 			addCard(match_cast_result[getrank_ary[0]][0], "", 50, "cast");
 			castcardcnt_ary[50].innerHTML = match_cast_result[getrank_ary[0]][1] + "回";
@@ -1407,7 +1414,7 @@ function card_ranking(getcast, addcnt, mode){
 	
 	// 必要数まで出現位置を格納していく
 	for(add_work = 0; add_work < addcnt; add_work++){
-		if(sort_ary.length < add_work){
+		if(sort_ary.length <= add_work){
 			// 表示したい数より登録されているカードが少ない場合は、それを超えた配列番号を参照するように返す（表示処理でブランクにしている）
 			rank_ary[add_work] = add_work;
 		} else {
@@ -1510,6 +1517,9 @@ function lvuptime(lvsec, batcnt){
 // URLが対戦履歴ページ以外の場合はメッセージを表示する
 function urlchk(){
 	if(location.href.toString() == starturl1 || location.href.toString() == starturl2){
+		return true;
+	} else if(location.href.toString() == butouurl1){
+		butou_flg = 1;
 		return true;
 	} else {
 		alert("実行するページのアドレスが一致しません。\n【WLW】対戦履歴(全国対戦):Wonder.NET ワンダーランドウォーズ\n「https://wonderland-wars.net/matchlog.html」\n上記のページで実行してください。");
@@ -1821,7 +1831,7 @@ function select_fun(getno){
 			alert(lsdata_getcnt + "件のデータを削除しました。");
 		}
 	} else if(getno == 10){
-		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/6です。\nファイター3人以上の試合は少ないため項目を削除し、\n代わりに青い羽のイヤリングを追加しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/11です。\n舞闘会モードを追加しました。\n全国対戦との違いは、オプション機能での保存ができるかどうかのみです。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
 	}
 }
 
