@@ -148,6 +148,7 @@ var gameNode = document.createElement("h2");
 var skillNode = document.createElement("h2");
 var castNode = document.createElement("h2");
 var dtlNode = null;
+var matchdate_ary = null;
 
 // 表示ノード用配列
 var node_ary = [];
@@ -175,13 +176,25 @@ var errmsg = [
 ,"キャストデータの集計処理時にエラーが発生しました。\n試合結果が正常に取得できなかったか、想定外のデータになっている可能性があります。"
 ,"マッチングキャストの集計中処理時にエラーが発生しました。\n試合結果が正常に取得できなかったか、想定外のデータになっている可能性があります。"
 ,"表示処理中にエラーが発生しました。\n集計した試合結果が想定外のデータになっている可能性があります。"
-,"取得に失敗した試合と、正常に取得できた試合があります。\n正常に取得できた試合のみでの結果を表示します。\n一部機能が使用できなくなります。また、結果の保存は行わないでください。"
+,"取得に失敗した試合と、正常に取得できた試合があります。\n正常に取得できた試合のみでの結果を表示します。\nまた、結果の保存は行わないでください。"
 ]
 
 // 本処理
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
 	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/11");
+	
+	// エラー表示用の日付取得
+	try{
+		if(butou_flg == 1){
+			matchdate_ary = document.getElementsByClassName("ball_date");
+		} else {
+			matchdate_ary = document.getElementsByClassName("match_date");
+		}
+	}catch(e){
+		matchdate_ary = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
+	}
+	
 	// 対戦履歴のページ数だけ処理する
 	for(var linkcnt=0; linkcnt < document.links.length; linkcnt++){
 		urlstr = document.links[linkcnt].toString();
@@ -256,7 +269,7 @@ if( urlchk() ){
 	// 終了メッセージ
 	if(skip_battle != 0 && battle_cnt != 0 && errnum == 0){
 		errnum = 10;
-		alert("処理終了　エラー番号:" + errnum + "\n" + "取得試合数:" + battle_cnt + "\n" + "取得失敗試合数:" + skip_battle + "\n" + errmsg[errnum]);
+		alert("処理終了　エラー番号:" + errnum + "\n" + "取得試合数:" + battle_cnt + "\n" + "取得失敗試合数:" + skip_battle + "\n" + errmsg[errnum] + "\n対象試合時刻:" + errstr);
 	} else if(battle_cnt != 0 && errnum == 0){
 		alert("処理終了　エラー番号:" + errnum + "\n" + "取得試合数:" + battle_cnt + "\n" + errmsg[errnum]);
 	} else {
@@ -551,7 +564,8 @@ function sorceget(){
 			result_battle[battle_cnt] = result_ary;
 			battle_cnt++;
 			
-		} catch(e) {
+		} catch(e) { 
+			errstr += "\n" + matchdate_ary[(battle_cnt + skip_battle)].innerHTML;
 			skip_battle++;
 			return;
 		}
@@ -1682,6 +1696,7 @@ function select_fun(getno){
 			"\n0蓬莱 チーム数:" + asi_ary1[0][0] + " | Lv5残り時間:" + asi_ary1[1][0] + 
 			"\n1蓬莱 チーム数:" + asi_ary1[0][1] + " | Lv5残り時間:" + asi_ary1[1][1] + 
 			"\n2蓬莱 チーム数:" + asi_ary1[0][2] + " | Lv5残り時間:" + asi_ary1[1][2] + 
+			"\n3蓬莱 チーム数:" + asi_ary1[0][3] + " | Lv5残り時間:" + asi_ary1[1][3] + 
 			"\n0青い羽 チーム数:" + asi_ary2[0][0] + " | Lv5残り時間:" + asi_ary2[1][0] + 
 			"\n1青い羽 チーム数:" + asi_ary2[0][1] + " | Lv5残り時間:" + asi_ary2[1][1] + 
 			"\n2青い羽 チーム数:" + asi_ary2[0][2] + " | Lv5残り時間:" + asi_ary2[1][2] );
