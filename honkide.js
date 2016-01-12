@@ -3,7 +3,7 @@ javascript:
 // 実行するURL
 var starturl1 = "https://wonderland-wars.net/matchlog.html";
 var starturl2 = "https://wonderland-wars.net/matchlog.html?type=all";
-var butouurl1 = "https://wonderland-wars.net/matchlog.html?type=bb";
+var ballurl1 = "https://wonderland-wars.net/matchlog.html?type=bb";
 
 // カード名取得用URL(ver=の部分は公式のタイミングによっては古いかも)
 var skill_listurl = "https://wonderland-wars.net/cardlist.html?ver=19&type=1";
@@ -98,6 +98,8 @@ var mtc_detail_data2_kyoten = /<div class="mtc_detail_data2_kyoten".*<\/div>/;
 var mtc_detail_data2_exp = /<div class="mtc_detail_data2_exp".*<\/div>/;
 // パートナー値
 var mtc_detail_m_with_num = /<div class="mtc_detail_m_with_num".*<\/div>/;
+// 舞闘会パートナー値
+var ball_detail_m_with_num = /<div class="ball_detail_m_with_num".*<\/div>/;
 
 // 試合時間秒数*10
 var battle_time = 420;
@@ -118,7 +120,7 @@ var match_cast_sum = 0;
 // マッチングキャストカウンタ
 var match_cast_cnt = 0;
 // 舞闘会モードフラグ
-var butou_flg = 0;
+var ball_flg = 0;
 
 // 結果を配列で格納する
 var result_battle = [];
@@ -182,16 +184,16 @@ var errmsg = [
 // 本処理
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
-	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/11");
+	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/12");
 	
 	// エラー表示用の日付取得
 	try{
-		if(butou_flg == 1){
+		if(ball_flg == 1){
 			matchdate_ary = document.getElementsByClassName("ball_date");
 		} else {
 			matchdate_ary = document.getElementsByClassName("match_date");
 		}
-	}catch(e){
+	} catch(e) {
 		matchdate_ary = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
 	}
 	
@@ -409,31 +411,58 @@ function sorceget(){
 			// 自プレイヤースキルアシスト情報を取得
 			// スキルカードファイル名を取得
 			player[0] = src_ary[0].match(mtc_detail_skill);
-			for(cnt = 0; cnt < player[0].length; cnt++){
-				tmpstr = player[0][cnt].split("/");
-				player[0][cnt] = tmpstr[3];
+			if(player[0] != null){
+				for(cnt = 0; cnt < player[0].length; cnt++){
+					tmpstr = player[0][cnt].split("/");
+					player[0][cnt] = tmpstr[3];
+				}
+				while(player[0].length < 4){
+					player[0].push(nocard_img);
+				}
+			} else {
+				tmpstr = [nocard_img, nocard_img, nocard_img, nocard_img];
+				player[0] = tmpstr;
 			}
 			// スキル使用回数を取得
 			card_chk = src_ary[0].match(mtc_detail_skill_count);
 			// スキル使用回数特有のスペースやタブを除去
-			for(cnt = 0; cnt < card_chk.length; cnt++){
-				card_chk[cnt] = card_chk[cnt].replace(/\s+/g, "");
-				card_chk[cnt] = card_chk[cnt].replace(/<.*>/, "");
+			if(card_chk != null){
+				for(cnt = 0; cnt < card_chk.length; cnt++){
+					card_chk[cnt] = card_chk[cnt].replace(/\s+/g, "");
+					card_chk[cnt] = card_chk[cnt].replace(/<.*>/, "");
+				}
+				player[1] = card_chk;
+				while(player[1].length < 4){
+					player[1].push("0");
+				}
+			} else {
+				card_chk = ["0", "0", "0", "0"];
+				player[1] = card_chk;
 			}
-			player[1] = card_chk;
-			
 			// アシストカードファイル名を取得
 			player[2] = src_ary[0].match(mtc_detail_assist);
-			for(cnt = 0; cnt < player[2].length; cnt++){
-				tmpstr = player[2][cnt].split("/");
-				player[2][cnt] = tmpstr[3];
+			if(player[2] != null){
+				for(cnt = 0; cnt < player[2].length; cnt++){
+					tmpstr = player[2][cnt].split("/");
+					player[2][cnt] = tmpstr[3];
+				}
+				while(player[2].length < 3){
+					player[2].push(nocard_img);
+				}
+			} else {
+				tmpstr = [nocard_img, nocard_img, nocard_img];
+				player[2] = tmpstr;
 			}
-			
 			// ソウルカードファイル名を取得
 			player[3] = src_ary[0].match(mtc_detail_soul);
-			for(cnt = 0; cnt < player[3].length; cnt++){
-				tmpstr = player[3][cnt].split("/");
-				player[3][cnt] = tmpstr[3];
+			if(player[3] != null){
+				for(cnt = 0; cnt < player[3].length; cnt++){
+					tmpstr = player[3][cnt].split("/");
+					player[3][cnt] = tmpstr[3];
+				}
+			} else {
+				tmpstr = [nocard_img];
+				player[3] = tmpstr;
 			}
 			
 			// カードのレベルを取得
@@ -499,27 +528,48 @@ function sorceget(){
 					// スキルカード
 					var eqary= [];
 					tmpstr = tmp_ary[player_cnt].match(mtc_detail_skill);
-					for(var eqcnt = 0; eqcnt < 4; eqcnt++){
-						var eqstr = tmpstr[eqcnt].toString().split("/");
-						eqary[eqcnt] = eqstr[3].toString();
+					if(tmpstr != null){
+						for(var eqcnt = 0; eqcnt < tmpstr.length; eqcnt++){
+							var eqstr = tmpstr[eqcnt].toString().split("/");
+							eqary[eqcnt] = eqstr[3].toString();
+						}
+						while(eqary.length < 4){
+							eqary.push(nocard_img);
+						}
+						member_tmp[4] = eqary;
+					} else {
+						tmpstr = [nocard_img, nocard_img, nocard_img, nocard_img];
+						member_tmp[4] = tmpstr;
 					}
-					member_tmp[4] = eqary;
 					// アシストカード
 					var eqary= [];
 					tmpstr = tmp_ary[player_cnt].match(mtc_detail_assist);
-					for(var eqcnt = 0; eqcnt < 3; eqcnt++){
-						var eqstr = tmpstr[eqcnt].toString().split("/");
-						eqary[eqcnt] = eqstr[3].toString();
+					if(tmpstr != null){
+						for(var eqcnt = 0; eqcnt < tmpstr.length; eqcnt++){
+							var eqstr = tmpstr[eqcnt].toString().split("/");
+							eqary[eqcnt] = eqstr[3].toString();
+						}
+						while(eqary.length < 3){
+							eqary.push(nocard_img);
+						}
+						member_tmp[5] = eqary;
+					} else {
+						tmpstr = [nocard_img, nocard_img, nocard_img];
+						member_tmp[5] = tmpstr;
 					}
-					member_tmp[5] = eqary;
 					// ソウルカード
 					var eqary= [];
 					tmpstr = tmp_ary[player_cnt].match(mtc_detail_soul);
-					for(var eqcnt = 0; eqcnt < 1; eqcnt++){
-						var eqstr = tmpstr[eqcnt].toString().split("/");
-						eqary[eqcnt] = eqstr[3].toString();
+					if(tmpstr != null){
+						for(var eqcnt = 0; eqcnt < tmpstr.length; eqcnt++){
+							var eqstr = tmpstr[eqcnt].toString().split("/");
+							eqary[eqcnt] = eqstr[3].toString();
+						}
+						member_tmp[6] = eqary;
+					} else {
+						tmpstr = [nocard_img];
+						member_tmp[6] = tmpstr;
 					}
-					member_tmp[6] = eqary;
 					
 					// カードのレベルを取得
 					card_chk = [];
@@ -540,7 +590,11 @@ function sorceget(){
 					member_tmp[7] = card_chk;
 					
 					// パートナー値の取得
-					tmpstr = tmp_ary[player_cnt].match(mtc_detail_m_with_num);
+					if(ball_flg == 0){
+						tmpstr = tmp_ary[player_cnt].match(mtc_detail_m_with_num);
+					} else {
+						tmpstr = tmp_ary[player_cnt].match(ball_detail_m_with_num);
+					}
 					if(tmpstr == null){
 						// 敵チームは空欄
 						member_tmp[8] = "";
@@ -564,7 +618,7 @@ function sorceget(){
 			result_battle[battle_cnt] = result_ary;
 			battle_cnt++;
 			
-		} catch(e) { 
+		} catch(e) {
 			errstr += "\n" + matchdate_ary[(battle_cnt + skip_battle)].innerHTML;
 			skip_battle++;
 			return;
@@ -709,7 +763,7 @@ function hyouji(){
 		option_asi.innerHTML = "月に叢雲(ファイターに蓬莱)";
 		selecttest.appendChild(option_asi);
 		
-		if(butou_flg == 0){
+		if(ball_flg == 0){
 			var option_sal = document.createElement("option");
 			option_sal.value = 8;
 			option_sal.innerHTML = "ｼｭｰﾃｨﾝ!!(対戦履歴保存&読込)";
@@ -1176,28 +1230,37 @@ function match_cast_add(ary_no){
 						match_cast_result[cast_chk][1]++;
 						
 						// ワンダースキルカードチェック
-						var chkcard_flg = 0;
-						// 今のところ複数は存在しないが、念のため（増えた場合は要確認）
-						for(var chkcard = 0; chkcard < match_cast_result[cast_chk][2].length; chkcard++){
-							// 既存の登録済みカードに存在するかのチェック
-							if(skill_url_plus + result_battle[ary_no][26][match_cnt][4][0].toString() == match_cast_result[cast_chk][2][chkcard].toString()){
-								match_cast_result[cast_chk][3][chkcard]++;
-								chkcard_flg = 1;
-								break;
+						for(var card_pos = 0; card_pos < 1; card_pos++){
+							var chkcard_flg = 0;
+							if(result_battle[ary_no][26][match_cnt][4][card_pos].toString() == nocard_img){
+								continue;
 							}
-						}
-						// 新規ワンダースキルカードの場合は追加
-						if(chkcard_flg == 0){
-							match_cast_result[cast_chk][2].push(skill_url_plus + result_battle[ary_no][26][match_cnt][4][0]);
-							match_cast_result[cast_chk][3].push(1);
+							// 今のところ複数は存在しないが、念のため（増えた場合は要確認）
+							for(var chkcard = 0; chkcard < match_cast_result[cast_chk][2].length; chkcard++){
+								// 既存の登録済みカードに存在するかのチェック
+								if(skill_url_plus + result_battle[ary_no][26][match_cnt][4][0].toString() == match_cast_result[cast_chk][2][chkcard].toString()){
+									match_cast_result[cast_chk][3][chkcard]++;
+									chkcard_flg = 1;
+									break;
+								}
+							}
+							// 新規ワンダースキルカードの場合は追加
+							if(chkcard_flg == 0){
+								match_cast_result[cast_chk][2].push(skill_url_plus + result_battle[ary_no][26][match_cnt][4][0]);
+								match_cast_result[cast_chk][3].push(1);
+							}
 						}
 						
 						// スキルカード1～3チェック、0番はワンダースキルなので飛ばす
-						for(var card_pos = 1; card_pos < 4; card_pos++){
+						for(var card_pos = 1; card_pos < result_battle[ary_no][26][match_cnt][4].length; card_pos++){
 							var chkcard_flg = 0;
+							// 装備していない場合はスキップする
+							if(result_battle[ary_no][26][match_cnt][4][card_pos].toString() == nocard_img){
+								continue;
+							}
 							// 既存の登録済みカードに存在するかのチェック
 							for(var chkcard = 0; chkcard < match_cast_result[cast_chk][4].length; chkcard++){
-								if(skill_url_plus + result_battle[ary_no][26][match_cnt][4][card_pos].toString() == match_cast_result[cast_chk][4][chkcard].toString()){
+								if(match_cast_result[cast_chk][4][chkcard].toString().match(result_battle[ary_no][26][match_cnt][4][card_pos].toString())){
 									match_cast_result[cast_chk][5][chkcard]++;
 									chkcard_flg = 1;
 									break;
@@ -1211,11 +1274,15 @@ function match_cast_add(ary_no){
 						}
 						
 						// アシストカード1～3チェック
-						for(var card_pos = 0; card_pos < 3; card_pos++){
+						for(var card_pos = 0; card_pos < result_battle[ary_no][26][match_cnt][5].length; card_pos++){
 							var chkcard_flg = 0;
+							// 装備していない場合はスキップする
+							if(result_battle[ary_no][26][match_cnt][5][card_pos].toString() == nocard_img){
+								continue;
+							}
 							// 既存の登録済みカードに存在するかのチェック
 							for(var chkcard = 0; chkcard < match_cast_result[cast_chk][6].length; chkcard++){
-								if(assist_url_plus + result_battle[ary_no][26][match_cnt][5][card_pos].toString() == match_cast_result[cast_chk][6][chkcard].toString()){
+								if(match_cast_result[cast_chk][6][chkcard].toString().match(result_battle[ary_no][26][match_cnt][5][card_pos].toString())){
 									match_cast_result[cast_chk][7][chkcard]++;
 									chkcard_flg = 1;
 									break;
@@ -1229,19 +1296,25 @@ function match_cast_add(ary_no){
 						}
 						
 						// ソウルカードチェック
-						var chkcard_flg = 0;
-						for(var chkcard = 0; chkcard < match_cast_result[cast_chk][8].length; chkcard++){
-							// 既存の登録済みカードに存在するかのチェック
-							if(soul_url_plus + result_battle[ary_no][26][match_cnt][6][0].toString() == match_cast_result[cast_chk][8][chkcard].toString()){
-								match_cast_result[cast_chk][9][chkcard]++;
-								chkcard_flg = 1;
-								break;
+						for(var card_pos = 0; card_pos < result_battle[ary_no][26][match_cnt][6].length; card_pos++){
+							var chkcard_flg = 0;
+							// 装備していない場合はスキップする
+							if(result_battle[ary_no][26][match_cnt][6][card_pos].toString() == nocard_img){
+								continue;
 							}
-						}
-						// 新規ソウルカードの場合は追加
-						if(chkcard_flg == 0){
-							match_cast_result[cast_chk][8].push(soul_url_plus + result_battle[ary_no][26][match_cnt][6][0]);
-							match_cast_result[cast_chk][9].push(1);
+							for(var chkcard = 0; chkcard < match_cast_result[cast_chk][8].length; chkcard++){
+								// 既存の登録済みカードに存在するかのチェック
+								if(match_cast_result[cast_chk][8][chkcard].toString().match(result_battle[ary_no][26][match_cnt][6][card_pos].toString())){
+									match_cast_result[cast_chk][9][chkcard]++;
+									chkcard_flg = 1;
+									break;
+								}
+							}
+							// 新規ソウルカードの場合は追加
+							if(chkcard_flg == 0){
+								match_cast_result[cast_chk][8].push(soul_url_plus + result_battle[ary_no][26][match_cnt][6][card_pos]);
+								match_cast_result[cast_chk][9].push(1);
+							}
 						}
 						
 						// 既出キャラであったことのフラグ
@@ -1257,17 +1330,39 @@ function match_cast_add(ary_no){
 					// キャスト登場回数
 					ary_tmp[1] = 1;
 					// ワンダースキル
-					ary_tmp[2] = [skill_url_plus + result_battle[ary_no][26][match_cnt][4][0]];
-					ary_tmp[3] = [1];
+					ary_tmp[2] = [];
+					ary_tmp[3] = [];
+					if(result_battle[ary_no][26][match_cnt][4][0] != nocard_img){
+						ary_tmp[2].push(skill_url_plus + result_battle[ary_no][26][match_cnt][4][0]);
+						ary_tmp[3].push(1);
+					}
 					// スキル
-					ary_tmp[4] = [skill_url_plus + result_battle[ary_no][26][match_cnt][4][1], skill_url_plus + result_battle[ary_no][26][match_cnt][4][2], skill_url_plus + result_battle[ary_no][26][match_cnt][4][3]]
-					ary_tmp[5] = [1, 1, 1];
+					ary_tmp[4] = [];
+					ary_tmp[5] = [];
+					for(var cnt = 1; cnt < result_battle[ary_no][26][match_cnt][4].length; cnt++){
+						if(result_battle[ary_no][26][match_cnt][4][cnt] != nocard_img){
+							ary_tmp[4].push(skill_url_plus + result_battle[ary_no][26][match_cnt][4][cnt]);
+							ary_tmp[5].push(1);
+						}
+					}
 					// アシスト
-					ary_tmp[6] = [assist_url_plus + result_battle[ary_no][26][match_cnt][5][0], assist_url_plus + result_battle[ary_no][26][match_cnt][5][1], assist_url_plus + result_battle[ary_no][26][match_cnt][5][2]];
-					ary_tmp[7] = [1, 1, 1];
+					ary_tmp[6] = [];
+					ary_tmp[7] = [];
+					for(var cnt = 0; cnt < result_battle[ary_no][26][match_cnt][5].length; cnt++){
+						if(result_battle[ary_no][26][match_cnt][5][cnt] != nocard_img){
+							ary_tmp[6].push(assist_url_plus + result_battle[ary_no][26][match_cnt][5][cnt]);
+							ary_tmp[7].push(1);
+						}
+					}
 					// ソウル
-					ary_tmp[8] = [soul_url_plus + result_battle[ary_no][26][match_cnt][6][0]];
-					ary_tmp[9] = [1];
+					ary_tmp[8] = [];
+					ary_tmp[9] = [];
+					for(var cnt = 0; cnt < result_battle[ary_no][26][match_cnt][6].length; cnt++){
+						if(result_battle[ary_no][26][match_cnt][6][cnt] != nocard_img){
+							ary_tmp[8].push(soul_url_plus + result_battle[ary_no][26][match_cnt][6][cnt]);
+							ary_tmp[9].push(1);
+						}
+					}
 					match_cast_result[match_cast_cnt] = ary_tmp;
 					// キャストの登録番号を進める
 					match_cast_cnt++;
@@ -1532,8 +1627,8 @@ function lvuptime(lvsec, batcnt){
 function urlchk(){
 	if(location.href.toString() == starturl1 || location.href.toString() == starturl2){
 		return true;
-	} else if(location.href.toString() == butouurl1){
-		butou_flg = 1;
+	} else if(location.href.toString() == ballurl1){
+		ball_flg = 1;
 		return true;
 	} else {
 		alert("実行するページのアドレスが一致しません。\n【WLW】対戦履歴(全国対戦):Wonder.NET ワンダーランドウォーズ\n「https://wonderland-wars.net/matchlog.html」\n上記のページで実行してください。");
@@ -1846,7 +1941,7 @@ function select_fun(getno){
 			alert(lsdata_getcnt + "件のデータを削除しました。");
 		}
 	} else if(getno == 10){
-		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/11です。\n舞闘会モードを追加しました。\n全国対戦との違いは、オプション機能での保存ができるかどうかのみです。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/12です。\n特定条件下で試合の取得に失敗する不具合を修正。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
 	}
 }
 
