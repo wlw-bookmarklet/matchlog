@@ -1,5 +1,5 @@
-####Wonderland WarsのWonderland.NETで動作する、対戦履歴（全国対戦）の集計用ブックマークレットです。
-***
+####Wonderland Wars 対戦履歴集計用ブックマークレット 「本気でやっつけてやるんだから！」
+====
 ![sample5](https://cloud.githubusercontent.com/assets/16392405/11944775/d0ca1c28-a88b-11e5-83ac-691de748b479.jpg)
 
 ####できること：
