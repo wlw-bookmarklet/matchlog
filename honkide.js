@@ -130,6 +130,18 @@ var cast_result = [];
 var match_cast_result = [];
 // プレイヤーのスキルをセットしていた回数を格納
 var cast_result_skillset = [];
+// プレイヤーのキャスト画像を格納する
+var player_cast_img = [];
+// プレイヤーのロール数を格納する
+var player_role_ary = [0, 0, 0, 0];
+// マッチングしたキャスト画像を格納する
+var match_cast_img = [];
+// マッチングしたキャストのロールを格納する
+var match_cast_role = [];
+// マッチングしたキャストのロール数を格納する
+var match_role_ary = [0, 0, 0, 0];
+// マッチングしたキャスト種類をカウント
+var castimg_cnt = 0;
 
 // 表示サイズ用
 var icon_width = 0;
@@ -184,7 +196,7 @@ var errmsg = [
 // 本処理
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
-	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/12");
+	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/24");
 	
 	// エラー表示用の日付取得
 	try{
@@ -721,6 +733,7 @@ function syukei(strdata, mode){
 			break;
 		}
 	}
+	
 	battle_cnt -= skip_cnt;
 }
 
@@ -960,8 +973,19 @@ function hyouji(){
 		addCard(nocard_img, "", 17, "cast");
 		castNode.appendChild(dtlNode);
 		
+		// キャストロール比率
+		addNode("マッチング情報", "対象試合数:" + battle_cnt, 10, "cast");
+		addNode("ファイター比率", "", 11, "cast");
+		addNode("アタッカー比率", "", 12, "cast");
+		addNode("サポーター比率", "", 13, "cast");
+		
+		// キャストロール取得
+		for(var cnt = 0; cnt < cast_cnt; cnt++){
+			player_setimg(cast_result[cnt][0], cnt);
+		}
+		
 		// キャスト登場率ランキング
-		addNode("登場数ランキング", "対象試合数:" + battle_cnt, 5, "cast");
+		addNode("登場数ランキング", "", 15, "cast");
 		
 		dtlNode = document.createElement("div");
 		dtlNode.className = "mtc_detail_skill";
@@ -974,7 +998,7 @@ function hyouji(){
 		if(getrank_ary == -1){
 			cast_ary[0].innerHTML = "COM戦のみ";
 		} else if(match_cast_result.length < 5){
-			cast_ary[5].innerHTML = "表示キャスト数不足";
+			cast_ary[15].innerHTML = "表示キャスト数不足";
 		} else {
 			addCard(match_cast_result[getrank_ary[0]][0], "", 50, "cast");
 			castcardcnt_ary[50].innerHTML = match_cast_result[getrank_ary[0]][1] + "回";
@@ -1364,6 +1388,7 @@ function match_cast_add(ary_no){
 						}
 					}
 					match_cast_result[match_cast_cnt] = ary_tmp;
+					
 					// キャストの登録番号を進める
 					match_cast_cnt++;
 				}
@@ -1377,6 +1402,95 @@ function match_cast_add(ary_no){
 		errstr = "処理番号:" + ary_no + "\n\n" + e;
 		errnum = 8;
 	}
+}
+
+// プレイヤーキャストのロール取得用
+function player_setimg(player_casturl, player_castno){
+	player_cast_img[player_castno] = new Image();
+	player_cast_img[player_castno].onload = function(){
+		castimg_cnt++;
+		if(cast_cnt == castimg_cnt){
+			// キャスト画像のロールを取得
+			for(cnt = 0; cnt < cast_cnt; cnt++){
+				// 全キャスト集計はスキップ
+				if(cnt == 0){
+					continue;
+				}
+				var cast_role_tmp = "";
+				if(player_cast_img[cnt].complete || player_cast_img[cnt].readyState === "complete"){
+					cast_role_tmp = img_proc(player_cast_img[cnt], "role");
+				} else {
+					cast_role_tmp = "unknown";
+				}
+				
+				// ロール別のキャスト数集計
+				if(cast_role_tmp == "F"){
+					player_role_ary[0] += cast_result[cnt][1];
+				} else if(cast_role_tmp == "A"){
+					player_role_ary[1] += cast_result[cnt][1];
+				} else if(cast_role_tmp == "S"){
+					player_role_ary[2] += cast_result[cnt][1];
+				} else {
+					player_role_ary[3] += cast_result[cnt][1];
+				}
+			}
+			
+			// 数値を初期化
+			castimg_cnt = 0;
+			// キャストロール取得
+			for(var cnt = 0; cnt < match_cast_result.length; cnt++){
+				matchcast_setimg(match_cast_result[cnt][0], cnt);
+			}
+		}
+	}
+	player_cast_img[player_castno].src = player_casturl;
+}
+
+// マッチングキャストのロール取得用
+function matchcast_setimg(match_casturl, match_castno){
+	match_cast_img[match_castno] = new Image();
+	match_cast_img[match_castno].onload = function(){
+		castimg_cnt++;
+		if(match_cast_cnt == castimg_cnt){
+			// キャスト画像のロールを取得
+			for(cnt = 0; cnt < match_cast_img.length; cnt++){
+				if(match_cast_img[cnt].complete || match_cast_img[cnt].readyState === "complete"){
+					match_cast_role[cnt] = img_proc(match_cast_img[cnt], "role");
+				} else {
+					match_cast_role[cnt] = "unknown";
+				}
+			}
+			// ロール別のキャスト数集計
+			for(var cnt = 0; cnt < match_cast_role.length; cnt++){
+				if(match_cast_role[cnt] == "F"){
+					match_role_ary[0] += match_cast_result[cnt][1];
+				} else if(match_cast_role[cnt] == "A") {
+					match_role_ary[1] += match_cast_result[cnt][1];
+				} else if(match_cast_role[cnt] == "S") {
+					match_role_ary[2] += match_cast_result[cnt][1];
+				} else {
+					match_role_ary[3] += match_cast_result[cnt][1];
+				}
+			}
+			
+			// 舞踏会履歴でない場合は、自キャストのロール分減算（組み合わせの排除）する
+			if(ball_flg == 0){
+				match_role_ary[0] -= player_role_ary[0];
+				match_role_ary[1] -= player_role_ary[1];
+				match_role_ary[2] -= player_role_ary[2];
+			}
+			
+			var sum_castroll = match_role_ary[0] + match_role_ary[1] + match_role_ary[2];
+			// ロールに表示
+			cast_ary[11].innerHTML = Math.floor(match_role_ary[0] * 1000 / sum_castroll) / 10 + "%";
+			cast_ary[12].innerHTML = Math.floor(match_role_ary[1] * 1000 / sum_castroll) / 10 + "%";
+			cast_ary[13].innerHTML = Math.floor(match_role_ary[2] * 1000 / sum_castroll) / 10 + "%";
+			
+			// 数値を初期化
+			castimg_cnt = 0;
+		}
+	}
+	match_cast_img[match_castno].src = match_casturl;
 }
 
 // キャストをクリックした時の処理。試合結果とスキル使用回数は連動。マッチングキャストは別
@@ -1698,6 +1812,42 @@ function addCard(imgurl, usecnt, node_no, mode){
 	}
 }
 
+// 画像処理用関数
+function img_proc(getimg, mode){
+	var rtn = "";
+	// キャストのロール判定
+	if(mode == "role"){
+		var canvas = document.createElement("canvas");
+		var context = canvas.getContext("2d");
+		width = getimg.naturalWidth;
+		height = getimg.naturalHeight;
+		canvas.width = width;
+		canvas.height = height;
+		context.drawImage(getimg, 0, 0);
+		
+		var imgdata = context.getImageData(0, 0, 70, 65);
+		var idx1 = (18 + 30 * imgdata.width) * 4;
+		var idx2 = (19 + 30 * imgdata.width) * 4;
+		var idx3 = (20 + 30 * imgdata.width) * 4;
+		var cast_pix1 = imgdata.data[idx1];
+		var cast_pix2 = imgdata.data[idx2];
+		var cast_pix3 = imgdata.data[idx3];
+		
+		if(cast_pix1 > 100 && cast_pix2 < 100 && cast_pix3 < 100){
+			rtn = "F";
+		} else if(cast_pix1 < 100 && cast_pix2 < 100 && cast_pix3 < 100) {
+			rtn = "A";
+		} else if(cast_pix1 < 100 && cast_pix2 < 100 && cast_pix3 > 100) {
+			rtn = "S";
+		} else {
+			rtn = "unknown";
+		}
+	} else {
+		rtn = "";
+	}
+	return rtn;
+}
+
 // テスト版機能のメニュー
 function select_fun(getno){
 	// ローカルストレージに保存する処理
@@ -1903,9 +2053,13 @@ function select_fun(getno){
 				inspos.parentNode.removeChild(castNode);
 				inspos.parentNode.removeChild(selecttest);
 				
+				// 数値の初期化
 				cast_cnt = 0;
 				match_cast_cnt = 0;
 				match_cast_sum = 0;
+				castimg_cnt = 0;
+				player_role_ary = [0, 0, 0, 0];
+				match_role_ary = [0, 0, 0, 0];
 				
 				// データの再構成、同じ形にするために最新データから入れる
 				battle_cnt = lsdata_getcnt;
@@ -1941,7 +2095,7 @@ function select_fun(getno){
 			alert(lsdata_getcnt + "件のデータを削除しました。");
 		}
 	} else if(getno == 10){
-		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/12です。\n特定条件下で試合の取得に失敗する不具合を修正。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/24です。\nマッチングキャストデータの下部に、ロールごとの割合を表示するようにしました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
 	}
 }
 
