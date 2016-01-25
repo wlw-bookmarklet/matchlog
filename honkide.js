@@ -165,6 +165,7 @@ var skillNode = document.createElement("h2");
 var castNode = document.createElement("h2");
 var dtlNode = null;
 var matchdate_ary = null;
+var click_mycast = sum_img;
 
 // 表示ノード用配列
 var node_ary = [];
@@ -1496,6 +1497,9 @@ function matchcast_setimg(match_casturl, match_castno){
 
 // キャストをクリックした時の処理。試合結果とスキル使用回数は連動。マッチングキャストは別
 function changesum(getcast){
+	// クリックしたキャスト画像を格納
+	click_mycast = cast_result[getcast][0];
+	
 	// クリック時透過処理、前回の透過アイコンも元に戻す
 	imgNode_cast[getcast_sum].style.opacity = 1;
 	imgNode_skill[getcast_sum].style.opacity = 1;
@@ -1764,7 +1768,14 @@ function addNode(titlestr, datastr, node_no, mode){
 	tmpNode2.className = "block_playdata_01_text";
 	tmpNode2.innerHTML = datastr;
 	
-	fixNode.appendChild(tmpNode1);
+	if(mode == "result" && 4 <= node_no && node_no <= 9){
+		var linkNode = document.createElement("a");
+		linkNode.href = "JavaScript:level_senkou(" + (node_no - 2).toString() + ")";
+		linkNode.appendChild(tmpNode1);
+		fixNode.appendChild(linkNode);
+	} else {
+		fixNode.appendChild(tmpNode1);
+	}
 	fixNode.appendChild(tmpNode2);
 	
 	if(mode.toString() == "result"){
@@ -1887,47 +1898,7 @@ function select_fun(getno){
 	} else if(getno == 2){
 		alert("あーん、ごめんね！");
 	} else if(getno == 3){
-		if(window.confirm("注意：テスト機能のため、結果や動作のチェックが甘いです。\nLv5先行有利を確認するための機能です。\nデータの都合上、レベルアップ時間は最大8秒ほどの誤差がありえます")){
-			var saki_win = 0;
-			var saki_lose = 0;
-			var ato_win = 0;
-			var ato_lose = 0;
-			var draw_cnt = 0;
-			var saki_per = 0;
-			var ato_per = 0;
-			
-			for(var cnt = 0; cnt < battle_cnt; cnt++){
-				if(result_battle[cnt][10][3] == result_battle[cnt][11][3]){
-					draw_cnt++;
-				} else if(result_battle[cnt][10][3] < result_battle[cnt][11][3]){
-					if(result_battle[cnt][9].toString() == "win"){
-						saki_win++;
-					} else {
-						saki_lose++;
-					}
-				} else {
-					if(result_battle[cnt][9].toString() == "win"){
-						ato_win++;
-					} else {
-						ato_lose++;
-					}
-				}
-			}
-			if(saki_win + saki_lose != 0){
-				saki_per = Math.round((saki_win / (saki_win + saki_lose))*100);
-			} else {
-				saki_per = 0;
-			}
-			
-			if(ato_win + ato_lose != 0){
-				ato_per = Math.round((ato_win / (ato_win + ato_lose))*100);
-			} else {
-				ato_per = 0;
-			}
-			alert("対象試合数：" + battle_cnt + "\n自軍Lv5先行時\n勝率：" + saki_per + "%　勝利数：" + saki_win + "　敗北数：" + saki_lose + "\n敵軍Lv5先行時\n勝率：" + ato_per + "%　勝利数：" + ato_win + "　敗北数：" + ato_lose + "\nレベルアップ（ほぼ）同時試合数：" + draw_cnt);
-		} else {
-			return;
-		}
+		level_senkou(5, sum_img);
 	} else if(getno == 4){
 		var asi_name1 = "40fccec8d9cb07df38aa92bff5cc286f.png";
 		var asi_name2 = "a011a3e3393e878c050ff2cda3562bc7.png";
@@ -2061,6 +2032,7 @@ function select_fun(getno){
 				castimg_cnt = 0;
 				player_role_ary = [0, 0, 0, 0];
 				match_role_ary = [0, 0, 0, 0];
+				click_mycast = sum_img;
 				
 				// データの再構成、同じ形にするために最新データから入れる
 				battle_cnt = lsdata_getcnt;
@@ -2159,5 +2131,67 @@ function team_result(asiurl, mode){
 	} catch(e) {
 		alert("処理中にエラーが発生したため終了します。\n\n" + e);
 		return false;
+	}
+}
+
+// レベル先行勝率
+function level_senkou(get_level, get_cast){
+	if(window.confirm("注意：テスト機能のため、結果や動作のチェックが甘いです。\nLv" + get_level + "先行有利を確認するための機能です。\nデータの都合上、レベルアップ時間は最大8秒ほどの誤差がありえます")){
+		var saki_win = 0;
+		var saki_lose = 0;
+		var ato_win = 0;
+		var ato_lose = 0;
+		var draw_cnt = 0;
+		var saki_per = 0;
+		var ato_per = 0;
+		var hyouji_cast = "";
+		var hyouji_battle = 0;
+		
+		if(get_cast != null){
+			hyouji_cast = get_cast;
+		} else {
+			hyouji_cast = click_mycast;
+		}
+		// レベルチェック
+		if(get_level < 2 || 8 < get_level){
+			alert("範囲外のレベルが指定されました。\n処理対象レベル:" + get_level);
+			return;
+		}
+		// レベルを配列の位置に合わせる
+		var level_num = get_level - 2;
+		for(var cnt = 0; cnt < battle_cnt; cnt++){
+			if(hyouji_cast.match(sum_img) || click_mycast.match(result_battle[cnt][5])){
+				if(result_battle[cnt][10][level_num] == result_battle[cnt][11][level_num]){
+					draw_cnt++;
+				} else if(result_battle[cnt][10][level_num] < result_battle[cnt][11][level_num]){
+					if(result_battle[cnt][9].toString() == "win"){
+						saki_win++;
+					} else {
+						saki_lose++;
+					}
+				} else {
+					if(result_battle[cnt][9].toString() == "win"){
+						ato_win++;
+					} else {
+						ato_lose++;
+					}
+				}
+				hyouji_battle++;
+			}
+		}
+		if(saki_win + saki_lose != 0){
+			saki_per = Math.round((saki_win / (saki_win + saki_lose))*100);
+		} else {
+			saki_per = 0;
+		}
+		
+		if(ato_win + ato_lose != 0){
+			ato_per = Math.round((ato_win / (ato_win + ato_lose))*100);
+		} else {
+			ato_per = 0;
+		}
+		alert("対象試合数：" + hyouji_battle + "\n自軍Lv" + get_level + "先行時\n勝率：" + saki_per + "%　勝利数：" + saki_win + "　敗北数：" + saki_lose + "\n敵軍Lv" + get_level + "先行時\n勝率：" + ato_per + "%　勝利数：" + ato_win + "　敗北数：" + ato_lose + "\nレベルアップ（ほぼ）同時試合数：" + draw_cnt);
+	} else {
+		return;
 	}
 }
