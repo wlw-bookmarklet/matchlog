@@ -148,7 +148,8 @@ var castimg_cnt = 0;
 // 表示サイズ用
 var icon_width = 0;
 var icon_height = 0;
-var margin_bot = 0;
+var icon_margin_bot = "20px";
+var frame02_margin_bot = "136px";
 
 // 表示用
 var getcast_sum = 0;
@@ -199,7 +200,7 @@ var errmsg = [
 // 本処理
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
-	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/25");
+	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/28");
 	
 	// エラー表示用の日付取得
 	try{
@@ -271,14 +272,16 @@ if( urlchk() ){
 			icon_height = 35;
 			card_width = 31;
 			card_height = 44;
-			margin_bot ="10px";
+			icon_margin_bot ="10px";
+			frame02_margin_bot = "68px";
 		} else {
 			//表示領域が大きい時の処理
 			icon_width = 60;
 			icon_height = 70;
 			card_width = 62;
 			card_height = 87;
-			margin_bot ="20px";
+			icon_margin_bot ="20px";
+			frame02_margin_bot = "136px";
 		}
 		hyouji();
 	}
@@ -802,7 +805,7 @@ function hyouji(){
 		gameNode = document.createElement("div");
 		gameNode.className = "frame02_1";
 		gameNode.style.marginTop = "72px";
-		gameNode.style.marginBottom = "136px";
+		gameNode.style.marginBottom = frame02_margin_bot;
 		
 		nodetitle1 = document.createElement("div");
 		nodetitle1.className = "frame02_1_title";
@@ -859,7 +862,7 @@ function hyouji(){
 		skillNode = document.createElement("div");
 		skillNode.className = "frame02_1";
 		skillNode.style.marginTop = "72px";
-		skillNode.style.marginBottom = "136px";
+		skillNode.style.marginBottom = frame02_margin_bot;
 		
 		nodetitle2 = document.createElement("div");
 		nodetitle2.className = "frame02_1_title";
@@ -903,7 +906,7 @@ function hyouji(){
 		castNode = document.createElement("div");
 		castNode.className = "frame02_1"
 		castNode.style.marginTop = "72px";
-		castNode.style.marginBottom = "136px";
+		castNode.style.marginBottom = frame02_margin_bot;
 		
 		nodetitle3 = document.createElement("div");
 		nodetitle3.className = "frame02_1_title";
@@ -933,7 +936,7 @@ function hyouji(){
 		dtlNode.className = "mtc_detail_skill";
 		dtlNode.style.position = "static";
 		dtlNode.style.width = "100%";
-		dtlNode.style.marginBottom = margin_bot;
+		dtlNode.style.marginBottom = icon_margin_bot;
 		
 		addCard(nocard_img, "", 0, "cast");
 		addCard(nocard_img, "", 1, "cast");
@@ -948,7 +951,7 @@ function hyouji(){
 		dtlNode.className = "mtc_detail_skill";
 		dtlNode.style.position = "static";
 		dtlNode.style.width = "100%";
-		dtlNode.style.marginBottom = margin_bot;
+		dtlNode.style.marginBottom = icon_margin_bot;
 		
 		addCard(nocard_img, "", 5, "cast");
 		addCard(nocard_img, "", 6, "cast");
@@ -967,7 +970,7 @@ function hyouji(){
 		dtlNode.className = "mtc_detail_skill";
 		dtlNode.style.position = "static";
 		dtlNode.style.width = "100%";
-		dtlNode.style.marginBottom = margin_bot;
+		dtlNode.style.marginBottom = icon_margin_bot;
 		
 		addCard(nocard_img, "", 13, "cast");
 		addCard(nocard_img, "", 14, "cast");
@@ -983,7 +986,7 @@ function hyouji(){
 		dtlNode.className = "mtc_detail_skill";
 		dtlNode.style.position = "static";
 		dtlNode.style.width = "100%";
-		dtlNode.style.marginBottom = margin_bot;
+		dtlNode.style.marginBottom = icon_margin_bot;
 		
 		var getrank_ary = [];
 		getrank_ary = card_ranking( "", 5, "castapp");
@@ -2068,7 +2071,7 @@ function select_fun(getno){
 			alert(lsdata_getcnt + "件のデータを削除しました。");
 		}
 	} else if(getno == 10){
-		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/25です。\nロール別計算に自身を含むようにして、チーム構成を重視した値にしました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/28です。\nスマホ向けにレイアウトの変更を行いました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
 	}
 }
 
