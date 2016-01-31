@@ -200,7 +200,7 @@ var errmsg = [
 // 本処理
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
-	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/28");
+	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/31");
 	
 	// エラー表示用の日付取得
 	try{
@@ -1881,15 +1881,10 @@ function select_fun(getno){
 			return;
 		}
 		if(window.confirm("注意：テスト機能のため、結果や動作のチェックが甘いです。\n最新の入国した日を対象に集計処理します。\n一日に20戦以上した場合は変わりません。")){
-			// 表示の削除処理
-			inspos.parentNode.removeChild(textNode);
-			inspos.parentNode.removeChild(gameNode);
-			inspos.parentNode.removeChild(skillNode);
-			inspos.parentNode.removeChild(castNode);
-			inspos.parentNode.removeChild(selecttest);
-			cast_cnt = 0;
-			match_cast_cnt = 0;
-			match_cast_sum = 0;
+			// 集計処理のリセット
+			syukei_reset();
+			
+			// 最新日付の取得
 			var get_date = result_battle[0][0].toString().split(" ");
 			syukei(get_date[0], 1);
 			hyouji();
@@ -2021,21 +2016,8 @@ function select_fun(getno){
 				}
 				localStorage.setItem(lscnt_name, lsdata_getcnt);
 				
-				// 表示の削除処理
-				inspos.parentNode.removeChild(textNode);
-				inspos.parentNode.removeChild(gameNode);
-				inspos.parentNode.removeChild(skillNode);
-				inspos.parentNode.removeChild(castNode);
-				inspos.parentNode.removeChild(selecttest);
-				
-				// 数値の初期化
-				cast_cnt = 0;
-				match_cast_cnt = 0;
-				match_cast_sum = 0;
-				castimg_cnt = 0;
-				player_role_ary = [0, 0, 0, 0];
-				match_role_ary = [0, 0, 0, 0];
-				click_mycast = sum_img;
+				// リセット処理
+				syukei_reset();
 				
 				// データの再構成、同じ形にするために最新データから入れる
 				battle_cnt = lsdata_getcnt;
@@ -2071,7 +2053,7 @@ function select_fun(getno){
 			alert(lsdata_getcnt + "件のデータを削除しました。");
 		}
 	} else if(getno == 10){
-		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/28です。\nスマホ向けにレイアウトの変更を行いました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/31です。\n最新日のみ集計を行った時、チーム構成目安が正しく取得できていなかった点を修正しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
 	}
 }
 
@@ -2197,4 +2179,23 @@ function level_senkou(get_level, get_cast){
 	} else {
 		return;
 	}
+}
+
+// 結果を再集計する時に使用する
+function syukei_reset(){
+	// 表示の削除処理
+	inspos.parentNode.removeChild(textNode);
+	inspos.parentNode.removeChild(gameNode);
+	inspos.parentNode.removeChild(skillNode);
+	inspos.parentNode.removeChild(castNode);
+	inspos.parentNode.removeChild(selecttest);
+	
+	// 数値の初期化
+	cast_cnt = 0;
+	match_cast_cnt = 0;
+	match_cast_sum = 0;
+	castimg_cnt = 0;
+	player_role_ary = [0, 0, 0, 0];
+	match_role_ary = [0, 0, 0, 0];
+	click_mycast = sum_img;
 }
