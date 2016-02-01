@@ -122,7 +122,7 @@ var match_cast_cnt = 0;
 // 舞闘会モードフラグ
 var ball_flg = 0;
 
-// 結果を配列で格納する
+// 試合結果を配列で格納する(※lengthで試合数を取らず、battle_cntを使用すること)
 var result_battle = [];
 // キャストごとの結果を配列で格納する
 var cast_result = [];
@@ -159,7 +159,7 @@ var imgNode_skill = [];
 var imgNode_other = [];
 var innerNode = null;
 var selecttest = null;
-var inspos  = null;
+var inspos = null;
 var textNode = document.createElement("h2");
 var gameNode = document.createElement("h2");
 var skillNode = document.createElement("h2");
@@ -200,7 +200,7 @@ var errmsg = [
 // 本処理
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
-	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/1/31");
+	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/2/1");
 	
 	// エラー表示用の日付取得
 	try{
@@ -746,10 +746,9 @@ function syukei(strdata, mode){
 // 表示処理
 function hyouji(){
 	try{
-		inspos = document.getElementById("page_title");
-		
 		// タイトルを表示
-		textNode.innerHTML = "本気でやっつけてやるんだから！"
+		inspos = document.getElementById("page_title"); 
+		textNode.innerHTML = "本気でやっつけてやるんだから！";
 		textNode.id = "page_title";
 		inspos.parentNode.insertBefore(textNode, inspos);
 		
@@ -2053,10 +2052,11 @@ function select_fun(getno){
 			alert(lsdata_getcnt + "件のデータを削除しました。");
 		}
 	} else if(getno == 10){
-		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/1/31です。\n最新日のみ集計を行った時、チーム構成目安が正しく取得できていなかった点を修正しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/2/1です。\n最新日のみ集計を行った時、キャストランキングが正しく表示されない不具合を修正しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
 	}
 }
 
+// アシストカードのレベルアップ時間をチーム単位で計算
 function team_result(asiurl, mode){
 	var asicnt_ary = [0,0,0,0,0];
 	var asitime_ary = [0,0,0,0,0];
@@ -2198,4 +2198,11 @@ function syukei_reset(){
 	player_role_ary = [0, 0, 0, 0];
 	match_role_ary = [0, 0, 0, 0];
 	click_mycast = sum_img;
+	cast_result = [];
+	cast_result_skillset = [];
+	player_cast_role = [];
+	player_cast_img = [];
+	match_cast_result = [];
+	match_cast_role = [];
+	match_cast_img = [];
 }
