@@ -164,6 +164,8 @@ var textNode = document.createElement("h2");
 var gameNode = document.createElement("h2");
 var skillNode = document.createElement("h2");
 var castNode = document.createElement("h2");
+var optNode = null;
+var optInner = null;
 var dtlNode = null;
 var matchdate_ary = null;
 var click_mycast = sum_img;
@@ -200,7 +202,7 @@ var errmsg = [
 // 本処理
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
-	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/2/1");
+	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/2/7");
 	
 	// エラー表示用の日付取得
 	try{
@@ -803,6 +805,7 @@ function hyouji(){
 		// 試合結果表示
 		gameNode = document.createElement("div");
 		gameNode.className = "frame02_1";
+		gameNode.id = "gameNode";
 		gameNode.style.marginTop = "72px";
 		gameNode.style.marginBottom = frame02_margin_bot;
 		
@@ -1789,6 +1792,8 @@ function addNode(titlestr, datastr, node_no, mode){
 	} else if(mode == "cast"){
 		cast_ary[node_no] = tmpNode2;
 		castNode.appendChild(fixNode);
+	} else if(mode == "opt"){
+		optInner.appendChild(fixNode);
 	}
 }
 
@@ -1872,6 +1877,13 @@ function select_fun(getno){
 	var lsmap_name = "honkide_map";
 	var lsdata_name = "honkide_data";
 	
+	// オプション表示があったら削除
+	try{
+		inspos.parentNode.removeChild(optNode);
+	} catch(e) {
+		
+	}
+	
 	if(getno == 0){
 		// 何もしない
 	} else if(getno == 1){
@@ -1899,21 +1911,53 @@ function select_fun(getno){
 	} else if(getno == 4){
 		var asi_name1 = "40fccec8d9cb07df38aa92bff5cc286f.png";
 		var asi_name2 = "a011a3e3393e878c050ff2cda3562bc7.png";
+		var asi_name3 = "6378a4b29ccd6056d243c8befb88b357.png";
 		
-		alert("注意：テスト機能のため、結果や動作のチェックが甘いです。\n\n 蓬莱の玉の枝、青い羽のイヤリングの数による、\nLv5時平均残り時間比較です。\n味方や敵を区別しないチーム単位での平均値です。\n特殊効果発動ロールが装備しているのかは考慮していません。");
+		alert("注意：テスト機能のため、結果や動作のチェックが甘いです。\n\n 蓬莱の玉の枝等の数による、\nLv5時平均残り時間比較です。\n味方や敵を区別しないチーム単位での平均値です。\n特殊効果発動ロールが装備しているのかは考慮していません。");
 		var asi_ary1 = team_result(asi_name1, 1);
 		var asi_ary2 = team_result(asi_name2, 1);
+		var asi_ary3 = team_result(asi_name3, 1);
 		
 		if(asi_ary1 != false && asi_ary2 != false){
 			// 結果表示
-			alert("蓬莱の玉の枝、青い羽のイヤリング\n装備数別のLv5到達平均残り時間比較\n" +
-			"\n0蓬莱 チーム数:" + asi_ary1[0][0] + " | Lv5残り時間:" + asi_ary1[1][0] + 
-			"\n1蓬莱 チーム数:" + asi_ary1[0][1] + " | Lv5残り時間:" + asi_ary1[1][1] + 
-			"\n2蓬莱 チーム数:" + asi_ary1[0][2] + " | Lv5残り時間:" + asi_ary1[1][2] + 
-			"\n3蓬莱 チーム数:" + asi_ary1[0][3] + " | Lv5残り時間:" + asi_ary1[1][3] + 
-			"\n0青い羽 チーム数:" + asi_ary2[0][0] + " | Lv5残り時間:" + asi_ary2[1][0] + 
-			"\n1青い羽 チーム数:" + asi_ary2[0][1] + " | Lv5残り時間:" + asi_ary2[1][1] + 
-			"\n2青い羽 チーム数:" + asi_ary2[0][2] + " | Lv5残り時間:" + asi_ary2[1][2] );
+			var optpos = document.getElementById("gameNode");
+			
+			optNode = document.createElement("div");
+			optNode.className = "frame02_1";
+			optNode.style.marginTop = "72px";
+			optNode.style.marginBottom = frame02_margin_bot;
+			
+			optInner = document.createElement("div");
+			optInner.className = "frame_inner";
+			
+			var opttitle = document.createElement("div");
+			opttitle.className = "frame02_1_title";
+			opttitle.innerHTML = "アシスト別Lv5時間";
+			optNode.appendChild(opttitle);
+			
+			addNode("蓬莱の玉の枝","Lv5残時間/チーム数", 0, "opt");
+			addNode("0本", asi_ary1[1][0] + "/" + asi_ary1[0][0] + "チーム", 1, "opt");
+			addNode("1本", asi_ary1[1][1] + "/" + asi_ary1[0][1] + "チーム", 2, "opt");
+			addNode("2本", asi_ary1[1][2] + "/" + asi_ary1[0][2] + "チーム", 3, "opt");
+			addNode("3本", asi_ary1[1][3] + "/" + asi_ary1[0][3] + "チーム", 4, "opt");
+			addNode("4本", asi_ary1[1][4] + "/" + asi_ary1[0][4] + "チーム", 5, "opt");
+			
+			addNode("青い羽のイヤリング","", 10, "opt");
+			addNode("0個", asi_ary2[1][0] + "/" + asi_ary2[0][0] + "チーム", 11, "opt");
+			addNode("1個", asi_ary2[1][1] + "/" + asi_ary2[0][1] + "チーム", 12, "opt");
+			addNode("2個", asi_ary2[1][2] + "/" + asi_ary2[0][2] + "チーム", 13, "opt");
+			addNode("3個", asi_ary2[1][3] + "/" + asi_ary2[0][3] + "チーム", 14, "opt");
+			addNode("4個", asi_ary2[1][4] + "/" + asi_ary2[0][4] + "チーム", 15, "opt");
+			
+			addNode("誠実な王の服","", 20, "opt");
+			addNode("0着", asi_ary3[1][0] + "/" + asi_ary3[0][0] + "チーム", 21, "opt");
+			addNode("1着", asi_ary3[1][1] + "/" + asi_ary3[0][1] + "チーム", 22, "opt");
+			addNode("2着", asi_ary3[1][2] + "/" + asi_ary3[0][2] + "チーム", 23, "opt");
+			addNode("3着", asi_ary3[1][3] + "/" + asi_ary3[0][3] + "チーム", 24, "opt");
+			addNode("4着", asi_ary3[1][4] + "/" + asi_ary3[0][4] + "チーム", 25, "opt");
+			
+			optNode.appendChild(optInner);
+			optpos.parentNode.insertBefore(optNode, optpos);
 		}
 	} else if(getno == 8){
 		// 絞った状態で保存は止める
@@ -2052,7 +2096,7 @@ function select_fun(getno){
 			alert(lsdata_getcnt + "件のデータを削除しました。");
 		}
 	} else if(getno == 10){
-		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/2/1です。\n最新日のみ集計を行った時、キャストランキングが正しく表示されない不具合を修正しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/2/7です。\n蓬莱の玉の枝オプション機能の表示方法を変更しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
 	}
 }
 
@@ -2105,7 +2149,7 @@ function team_result(asiurl, mode){
 			if(asicnt_ary[cnt] != 0){
 				asitime_ary[cnt] = lvuptime(asitime_ary[cnt], asicnt_ary[cnt]);
 			} else {
-				asitime_ary[cnt] = "No Data";
+				asitime_ary[cnt] = "";
 			}
 		}
 		
