@@ -25,8 +25,6 @@ var skill_url_plus = "common/img_card_thum/skill/";
 var assist_url_plus = "common/img_card_thum/assist/";
 var soul_url_plus = "common/img_card_thum/soul/";
 
-var request= new XMLHttpRequest();
-
 // データ取得用正規表現リスト
 // 対戦時刻
 var match_time = /<span class="font_small">.*<\/span>/g;
@@ -144,6 +142,8 @@ var match_cast_role = [];
 var match_role_ary = [0, 0, 0, 0];
 // マッチングしたキャスト種類をカウント
 var castimg_cnt = 0;
+// 非同期処理用カウンタ
+var matchurl_cnt = 0;
 
 // 表示サイズ用
 var icon_width = 0;
@@ -202,7 +202,7 @@ var errmsg = [
 // 本処理
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
-	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n一分以上経っても処理終了と表示されない場合は、\nエラーが発生した可能性もあります。\n最終更新日 2016/2/7");
+	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n2/7に読み込み処理を変更した影響で動かなくなった場合は、\nお手数ですがtwitterアカウント「@wlw_honkideya」かメールフォームへご連絡お願いします。\n最終更新日 2016/2/7");
 	
 	// エラー表示用の日付取得
 	try{
@@ -227,26 +227,396 @@ if( urlchk() ){
 		
 		// 対象外のURLも含まれるので、アドレスチェックを行う
 		if( urlstr.match(/matchlogdetail/i) ){
-			try{
-				request.open("GET", urlstr, false);
-				request.onreadystatechange=sorceget;
-				request.send(null);
-			} catch(e) {
-				request.abort();
-				errstr = "対象ページ:\n" + urlstr + "\n\n" + e;
-				errnum = 5;
-				break;
-			}
+			new_request(urlstr, matchurl_cnt);
+			matchurl_cnt++;
 		}
 		
 		if(errnum != 0){
 			break;
 		}
 	}
+} else {
+	alert("ﾅﾝﾃﾞｯ!!");
+}
+
+// ページ取得処理
+function new_request(urlstr, ary_no){
+	var request = new XMLHttpRequest();
+	try{
+		request.open("GET", urlstr);
+		request.onreadystatechange = function(){
+			if (request.readyState == 4 && request.status == 200){
+				getbattle(request.responseText, ary_no);
+			}
+		};
+		request.send(null);
+	} catch(e) {
+		request.abort();
+		errstr = "対象ページ:\n" + urlstr + "\n\n" + e;
+		errnum = 5;
+	}
+}
+
+// 対戦履歴詳細ページの情報を取得
+function getbattle(src_txt, ary_no){
+	var tmpstr = null;
+	var card_chk = null;
+	var chkreg = null;
+	var cnt = 0;
+	
+	var src_ary = [];
+	var result_ary = [];
+	var player = [];
+	var other_member = [];
+	var tmp_ary = [];
+	var comchk = [];
+	
+	try{
+		// ログイン済みかのチェック
+		if(src_txt.match("ログインフォーム")){
+			errnum = 4;
+			return;
+		}
+		
+		// ソースを2分割
+		src_ary = src_txt.split("mtc_detail_member clearfix");
+		
+		// 試合時刻を取得
+		tmpstr = src_ary[0].match(match_time);
+		result_ary[0] = tagsplit(tmpstr[0]);
+		// プレーヤー名を取得
+		tmpstr = src_ary[0].match(mp_mydata_name);
+		result_ary[1] = tagsplit(tmpstr[0]);
+		// 都道府県を取得
+		tmpstr = src_ary[0].match(mp_mydata_location);
+		result_ary[2] = tagsplit(tmpstr[0]);
+		// 店舗名を取得
+		tmpstr = src_ary[0].match(mtc_detail_store);
+		result_ary[3] = tagsplit(tmpstr[0]);
+		// マップ名を取得
+		tmpstr = src_ary[0].match(mtc_detail_map);
+		var tmpstr1 = tmpstr[0].split("<p>");
+		tmpstr = tmpstr1[1].split("<");
+		result_ary[4] = tmpstr[0];
+		
+		// プレイヤー画像を取得
+		tmpstr = src_ary[0].match(mtc_detail_cast).toString().split("/");
+		result_ary[5] = tmpstr[2];
+		// タイムを取得
+		tmpstr = src_ary[0].match(mtc_detail_time);
+		result_ary[6] = tagsplit(tmpstr[0]);
+		// 味方ゲージを取得
+		result_ary[7] = parseInt( lvsplit( src_ary[0].match(mtc_detail_mygage).toString() ) );
+		// 敵ゲージを取得
+		result_ary[8] = parseInt( lvsplit( src_ary[0].match(mtc_detail_enemygage).toString() ) );
+		// 勝敗を取得
+		var win_lose = src_ary[0].match(mtc_detail_result);
+		if(win_lose[0].match("icon_win.png") != null){
+			result_ary[9] = "win";
+		} else {
+			result_ary[9] = "lose";
+		}
+		
+		// レベルアップ時間を取得
+		var lvup_ary = [];
+		tmpstr = src_ary[0].match(levelup_my_lv);
+		for(cnt = 0; cnt < 7; cnt++){
+			if(tmpstr[cnt] == null){
+				lvup_ary[cnt] = 100;
+			} else {
+				lvup_ary[cnt] = parseInt(lvsplit(tmpstr[cnt]));
+			}
+		}
+		result_ary[10] = lvup_ary;
+		
+		var lvup_ary = [];
+		tmpstr = src_ary[0].match(levelup_enemy_lv);
+		for(cnt = 0; cnt < 7; cnt++){
+			if(tmpstr[cnt] == null){
+				lvup_ary[cnt] = 100;
+			} else {
+				lvup_ary[cnt] = parseInt(lvsplit(tmpstr[cnt]));
+			}
+		}
+		result_ary[11] = lvup_ary;
+		// 兵士撃破数を取得
+		tmpstr = src_ary[0].match(mtc_detail_data_heishi);
+		result_ary[12] = tagsplit(tmpstr[0]);
+		// キャスト撃破数
+		tmpstr = src_ary[0].match(mtc_detail_data_cast);
+		result_ary[13] = tagsplit(tmpstr[0]);
+		// 巨人撃破数
+		tmpstr = src_ary[0].match(mtc_detail_data_titan);
+		result_ary[14] = tagsplit(tmpstr[0]);
+		// 撤退数
+		tmpstr = src_ary[0].match(mtc_detail_data_tettai);
+		result_ary[15] = tagsplit(tmpstr[0]);
+		// ストレートショット
+		tmpstr = src_ary[0].match(mtc_detail_data_sts);
+		result_ary[16] = tagsplit(tmpstr[0]);
+		// ストレートショットHIT
+		tmpstr = src_ary[0].match(mtc_detail_data_stshit);
+		result_ary[17] = tagsplit(tmpstr[0]);
+		// ドローショット
+		tmpstr = src_ary[0].match(mtc_detail_data_drs);
+		result_ary[18] = tagsplit(tmpstr[0]);
+		// ドローショットHIT
+		tmpstr = src_ary[0].match(mtc_detail_data_drshit);
+		result_ary[19] = tagsplit(tmpstr[0]);
+		// 帰城
+		tmpstr = src_ary[0].match(mtc_detail_data_backhome);
+		result_ary[20] = tagsplit(tmpstr[0]);
+		// ストレートショット被HIT
+		tmpstr = src_ary[0].match(mtc_detail_data_sts2hit);
+		result_ary[21] = tagsplit(tmpstr[0]);
+		// ドローショット被HIT
+		tmpstr = src_ary[0].match(mtc_detail_data_drs2hit);
+		result_ary[22] = tagsplit(tmpstr[0]);
+		// 拠点破壊数
+		tmpstr = src_ary[0].match(mtc_detail_data2_kyoten);
+		result_ary[23] = tagsplit(tmpstr[0]);
+		// 入手経験値
+		tmpstr = src_ary[0].match(mtc_detail_data2_exp);
+		result_ary[24] = tagsplit(tmpstr[0]);
+		
+		// 自プレイヤースキルアシスト情報を取得
+		// スキルカードファイル名を取得
+		player[0] = src_ary[0].match(mtc_detail_skill);
+		if(player[0] != null){
+			for(cnt = 0; cnt < player[0].length; cnt++){
+				tmpstr = player[0][cnt].split("/");
+				player[0][cnt] = tmpstr[3];
+			}
+			while(player[0].length < 4){
+				player[0].push(nocard_img);
+			}
+		} else {
+			tmpstr = [nocard_img, nocard_img, nocard_img, nocard_img];
+			player[0] = tmpstr;
+		}
+		// スキル使用回数を取得
+		card_chk = src_ary[0].match(mtc_detail_skill_count);
+		// スキル使用回数特有のスペースやタブを除去
+		if(card_chk != null){
+			for(cnt = 0; cnt < card_chk.length; cnt++){
+				card_chk[cnt] = card_chk[cnt].replace(/\s+/g, "");
+				card_chk[cnt] = card_chk[cnt].replace(/<.*>/, "");
+			}
+			player[1] = card_chk;
+			while(player[1].length < 4){
+				player[1].push("0");
+			}
+		} else {
+			card_chk = ["0", "0", "0", "0"];
+			player[1] = card_chk;
+		}
+		// アシストカードファイル名を取得
+		player[2] = src_ary[0].match(mtc_detail_assist);
+		if(player[2] != null){
+			for(cnt = 0; cnt < player[2].length; cnt++){
+				tmpstr = player[2][cnt].split("/");
+				player[2][cnt] = tmpstr[3];
+			}
+			while(player[2].length < 3){
+				player[2].push(nocard_img);
+			}
+		} else {
+			tmpstr = [nocard_img, nocard_img, nocard_img];
+			player[2] = tmpstr;
+		}
+		// ソウルカードファイル名を取得
+		player[3] = src_ary[0].match(mtc_detail_soul);
+		if(player[3] != null){
+			for(cnt = 0; cnt < player[3].length; cnt++){
+				tmpstr = player[3][cnt].split("/");
+				player[3][cnt] = tmpstr[3];
+			}
+		} else {
+			tmpstr = [nocard_img];
+			player[3] = tmpstr;
+		}
+		
+		// カードのレベルを取得
+		card_chk = [];
+		tmpstr = src_ary[0].split(mtc_detail_cardblock);
+		for(cnt = 0; cnt < 8; cnt++){
+			// LV MAXチェック
+			var chkstr = tmpstr[cnt+1].match(mtc_detail_cardblock_lv_max);
+			if(chkstr != null){
+				card_chk[cnt] = "MAX";
+			} else {
+				chkstr = tmpstr[cnt+1].match(mtc_detail_cardblock_lv);
+				if(chkstr != null){
+					card_chk[cnt] = tagsplit(chkstr[0]);
+				} else {
+					card_chk[cnt] = "0";
+				}
+			}
+		}
+		player[4] = card_chk;
+		
+		// プレイヤーカード情報を格納
+		result_ary[25] = player;
+		
+		// COMプレイヤーと使用キャストの確認
+		for(cnt = 0; cnt < 7; cnt++){
+			if(cnt < 3){
+				chkreg = new RegExp("id=\"friend_" + cnt + "\"\\s*com=\"false\"");
+			} else {
+				var enemy_cnt = cnt - 3
+				chkreg = new RegExp("id=\"enemy_" + enemy_cnt + "\"\\s*com=\"false\"");
+			}
+			if(src_ary[1].match(chkreg) == null){
+				comchk[cnt] = 1;
+			} else {
+				comchk[cnt] = 0;
+			}
+		}
+		
+		// 他プレイヤーのための分割
+		tmp_ary = src_ary[1].split("match_detail_member_pop");
+		var player_cnt = 0;
+		
+		// 他プレイヤーのデータを取得
+		for(cnt = 0; cnt < 7; cnt++){
+			var member_tmp = [];
+			
+			// COMフラグの挿入
+			member_tmp[0] = comchk[cnt];
+			// COMでないなら取得を行う
+			if(member_tmp[0] == 0){
+				player_cnt++;
+				// キャスト画像URL
+				tmpstr = tmp_ary[player_cnt].match(mtc_detail_cast).toString().split("/");
+				member_tmp[1] = tmpstr[2].toString();
+				// プレイヤー名
+				tmpstr = tmp_ary[player_cnt].match(mp_mydata_name);
+				member_tmp[2] = tagsplit(tmpstr[0]);
+				// 都道府県
+				tmpstr = tmp_ary[player_cnt].match(mp_mydata_location);
+				member_tmp[3] = tagsplit(tmpstr[0]);
+				// 装備情報
+				// スキルカード
+				var eqary= [];
+				tmpstr = tmp_ary[player_cnt].match(mtc_detail_skill);
+				if(tmpstr != null){
+					for(var eqcnt = 0; eqcnt < tmpstr.length; eqcnt++){
+						var eqstr = tmpstr[eqcnt].toString().split("/");
+						eqary[eqcnt] = eqstr[3].toString();
+					}
+					while(eqary.length < 4){
+						eqary.push(nocard_img);
+					}
+					member_tmp[4] = eqary;
+				} else {
+					tmpstr = [nocard_img, nocard_img, nocard_img, nocard_img];
+					member_tmp[4] = tmpstr;
+				}
+				// アシストカード
+				var eqary= [];
+				tmpstr = tmp_ary[player_cnt].match(mtc_detail_assist);
+				if(tmpstr != null){
+					for(var eqcnt = 0; eqcnt < tmpstr.length; eqcnt++){
+						var eqstr = tmpstr[eqcnt].toString().split("/");
+						eqary[eqcnt] = eqstr[3].toString();
+					}
+					while(eqary.length < 3){
+						eqary.push(nocard_img);
+					}
+					member_tmp[5] = eqary;
+				} else {
+					tmpstr = [nocard_img, nocard_img, nocard_img];
+					member_tmp[5] = tmpstr;
+				}
+				// ソウルカード
+				var eqary= [];
+				tmpstr = tmp_ary[player_cnt].match(mtc_detail_soul);
+				if(tmpstr != null){
+					for(var eqcnt = 0; eqcnt < tmpstr.length; eqcnt++){
+						var eqstr = tmpstr[eqcnt].toString().split("/");
+						eqary[eqcnt] = eqstr[3].toString();
+					}
+					member_tmp[6] = eqary;
+				} else {
+					tmpstr = [nocard_img];
+					member_tmp[6] = tmpstr;
+				}
+				
+				// カードのレベルを取得
+				card_chk = [];
+				tmpstr = tmp_ary[player_cnt].split(mtc_detail_m_cardblock);
+				for(var lvcnt = 0; lvcnt < 8; lvcnt++){
+					var chkstr = tmpstr[lvcnt+1].match(mtc_detail_cardblock_lv_max);
+					if(chkstr != null){
+						card_chk[lvcnt] = "MAX";
+					} else {
+						var chkstr = tmpstr[lvcnt+1].match(mtc_detail_cardblock_lv);
+						if(chkstr != null){
+							card_chk[lvcnt] = tagsplit(chkstr[0]);
+						} else {
+							card_chk[lvcnt] = "0";
+						}
+					}
+				}
+				member_tmp[7] = card_chk;
+				
+				// パートナー値の取得
+				if(ball_flg == 0){
+					tmpstr = tmp_ary[player_cnt].match(mtc_detail_m_with_num);
+				} else {
+					tmpstr = tmp_ary[player_cnt].match(ball_detail_m_with_num);
+				}
+				if(tmpstr == null){
+					// 敵チームは空欄
+					member_tmp[8] = "";
+					member_tmp[9] = "";
+				} else {
+					tmpstr = tmpstr[0].toString().replace(/.*\(/, "").replace(/\).*/, "").replace(/\"/g, "").split(",");
+					member_tmp[8] = tmpstr[0];
+					member_tmp[9] = tmpstr[1];
+				}
+				
+			} else {
+				// COMのとき
+				member_tmp[1] = com_img;
+				member_tmp[2] = "COM";
+			}
+			other_member[cnt] = member_tmp;
+		}
+		result_ary[26] = other_member;
+		
+		// 結果を格納
+		result_battle[ary_no] = result_ary;
+		battle_cnt++;
+		
+	} catch(e) {
+		errstr += "\n" + matchdate_ary[(battle_cnt + skip_battle)].innerHTML;
+		skip_battle++;
+	} finally {
+		// 全件読み込みが終了したら後続処理へ
+		if(matchurl_cnt == battle_cnt + skip_battle){
+			compload();
+		}
+	}
+}
+
+// 試合データ取得後処理
+function compload(){
 	// 試合が取得できなかった場合
 	if(battle_cnt == 0 && errnum == 0){
 		errnum = 2;
 	}
+	
+	// 取得をスキップした試合がある場合
+	if(skip_battle != 0){
+		for(var cnt = 0; cnt < result_battle.length; cnt++){
+			if(result_battle[cnt] == null){
+				result_battle.splice(cnt, 1);
+				cnt--;
+			}
+		}
+	}
+	
 	/*
 	if(errnum == 0){
 		// カードリストの取得
@@ -296,353 +666,6 @@ if( urlchk() ){
 		alert("処理終了　エラー番号:" + errnum + "\n" + "取得試合数:" + battle_cnt + "\n" + errmsg[errnum]);
 	} else {
 		alert("処理終了　エラー番号:" + errnum + "\n" + errmsg[errnum] + "\n\n" + errstr);
-	}
-} else {
-	alert("ﾅﾝﾃﾞｯ!!");
-}
-
-// 対戦履歴詳細ページの情報を取得
-function sorceget(){
-	if (request.readyState == 4 && request.status == 200){
-		var src_txt = null;
-		var tmpstr = null;
-		var card_chk = null;
-		var chkreg = null;
-		var cnt = 0;
-		
-		var src_ary = [];
-		var result_ary = [];
-		var player = [];
-		var other_member = [];
-		var tmp_ary = [];
-		var comchk = [];
-		
-		try{
-			// ソースをテキストに
-			src_txt = request.responseText;
-			
-			// ログイン済みかのチェック
-			if(src_txt.match("ログインフォーム")){
-				errnum = 4;
-				return;
-			}
-			
-			// ソースを2分割
-			src_ary = src_txt.split("mtc_detail_member clearfix");
-			
-			// 試合時刻を取得
-			tmpstr = src_ary[0].match(match_time);
-			result_ary[0] = tagsplit(tmpstr[0]);
-			// プレーヤー名を取得
-			tmpstr = src_ary[0].match(mp_mydata_name);
-			result_ary[1] = tagsplit(tmpstr[0]);
-			// 都道府県を取得
-			tmpstr = src_ary[0].match(mp_mydata_location);
-			result_ary[2] = tagsplit(tmpstr[0]);
-			// 店舗名を取得
-			tmpstr = src_ary[0].match(mtc_detail_store);
-			result_ary[3] = tagsplit(tmpstr[0]);
-			// マップ名を取得
-			tmpstr = src_ary[0].match(mtc_detail_map);
-			var tmpstr1 = tmpstr[0].split("<p>");
-			tmpstr = tmpstr1[1].split("<");
-			result_ary[4] = tmpstr[0];
-			
-			// プレイヤー画像を取得
-			tmpstr = src_ary[0].match(mtc_detail_cast).toString().split("/");
-			result_ary[5] = tmpstr[2];
-			// タイムを取得
-			tmpstr = src_ary[0].match(mtc_detail_time);
-			result_ary[6] = tagsplit(tmpstr[0]);
-			// 味方ゲージを取得
-			result_ary[7] = parseInt( lvsplit( src_ary[0].match(mtc_detail_mygage).toString() ) );
-			// 敵ゲージを取得
-			result_ary[8] = parseInt( lvsplit( src_ary[0].match(mtc_detail_enemygage).toString() ) );
-			// 勝敗を取得
-			var win_lose = src_ary[0].match(mtc_detail_result);
-			if(win_lose[0].match("icon_win.png") != null){
-				result_ary[9] = "win";
-			} else {
-				result_ary[9] = "lose";
-			}
-			
-			// レベルアップ時間を取得
-			var lvup_ary = [];
-			tmpstr = src_ary[0].match(levelup_my_lv);
-			for(cnt = 0; cnt < 7; cnt++){
-				if(tmpstr[cnt] == null){
-					lvup_ary[cnt] = 100;
-				} else {
-					lvup_ary[cnt] = parseInt(lvsplit(tmpstr[cnt]));
-				}
-			}
-			result_ary[10] = lvup_ary;
-			
-			var lvup_ary = [];
-			tmpstr = src_ary[0].match(levelup_enemy_lv);
-			for(cnt = 0; cnt < 7; cnt++){
-				if(tmpstr[cnt] == null){
-					lvup_ary[cnt] = 100;
-				} else {
-					lvup_ary[cnt] = parseInt(lvsplit(tmpstr[cnt]));
-				}
-			}
-			result_ary[11] = lvup_ary;
-			// 兵士撃破数を取得
-			tmpstr = src_ary[0].match(mtc_detail_data_heishi);
-			result_ary[12] = tagsplit(tmpstr[0]);
-			// キャスト撃破数
-			tmpstr = src_ary[0].match(mtc_detail_data_cast);
-			result_ary[13] = tagsplit(tmpstr[0]);
-			// 巨人撃破数
-			tmpstr = src_ary[0].match(mtc_detail_data_titan);
-			result_ary[14] = tagsplit(tmpstr[0]);
-			// 撤退数
-			tmpstr = src_ary[0].match(mtc_detail_data_tettai);
-			result_ary[15] = tagsplit(tmpstr[0]);
-			// ストレートショット
-			tmpstr = src_ary[0].match(mtc_detail_data_sts);
-			result_ary[16] = tagsplit(tmpstr[0]);
-			// ストレートショットHIT
-			tmpstr = src_ary[0].match(mtc_detail_data_stshit);
-			result_ary[17] = tagsplit(tmpstr[0]);
-			// ドローショット
-			tmpstr = src_ary[0].match(mtc_detail_data_drs);
-			result_ary[18] = tagsplit(tmpstr[0]);
-			// ドローショットHIT
-			tmpstr = src_ary[0].match(mtc_detail_data_drshit);
-			result_ary[19] = tagsplit(tmpstr[0]);
-			// 帰城
-			tmpstr = src_ary[0].match(mtc_detail_data_backhome);
-			result_ary[20] = tagsplit(tmpstr[0]);
-			// ストレートショット被HIT
-			tmpstr = src_ary[0].match(mtc_detail_data_sts2hit);
-			result_ary[21] = tagsplit(tmpstr[0]);
-			// ドローショット被HIT
-			tmpstr = src_ary[0].match(mtc_detail_data_drs2hit);
-			result_ary[22] = tagsplit(tmpstr[0]);
-			// 拠点破壊数
-			tmpstr = src_ary[0].match(mtc_detail_data2_kyoten);
-			result_ary[23] = tagsplit(tmpstr[0]);
-			// 入手経験値
-			tmpstr = src_ary[0].match(mtc_detail_data2_exp);
-			result_ary[24] = tagsplit(tmpstr[0]);
-			
-			// 自プレイヤースキルアシスト情報を取得
-			// スキルカードファイル名を取得
-			player[0] = src_ary[0].match(mtc_detail_skill);
-			if(player[0] != null){
-				for(cnt = 0; cnt < player[0].length; cnt++){
-					tmpstr = player[0][cnt].split("/");
-					player[0][cnt] = tmpstr[3];
-				}
-				while(player[0].length < 4){
-					player[0].push(nocard_img);
-				}
-			} else {
-				tmpstr = [nocard_img, nocard_img, nocard_img, nocard_img];
-				player[0] = tmpstr;
-			}
-			// スキル使用回数を取得
-			card_chk = src_ary[0].match(mtc_detail_skill_count);
-			// スキル使用回数特有のスペースやタブを除去
-			if(card_chk != null){
-				for(cnt = 0; cnt < card_chk.length; cnt++){
-					card_chk[cnt] = card_chk[cnt].replace(/\s+/g, "");
-					card_chk[cnt] = card_chk[cnt].replace(/<.*>/, "");
-				}
-				player[1] = card_chk;
-				while(player[1].length < 4){
-					player[1].push("0");
-				}
-			} else {
-				card_chk = ["0", "0", "0", "0"];
-				player[1] = card_chk;
-			}
-			// アシストカードファイル名を取得
-			player[2] = src_ary[0].match(mtc_detail_assist);
-			if(player[2] != null){
-				for(cnt = 0; cnt < player[2].length; cnt++){
-					tmpstr = player[2][cnt].split("/");
-					player[2][cnt] = tmpstr[3];
-				}
-				while(player[2].length < 3){
-					player[2].push(nocard_img);
-				}
-			} else {
-				tmpstr = [nocard_img, nocard_img, nocard_img];
-				player[2] = tmpstr;
-			}
-			// ソウルカードファイル名を取得
-			player[3] = src_ary[0].match(mtc_detail_soul);
-			if(player[3] != null){
-				for(cnt = 0; cnt < player[3].length; cnt++){
-					tmpstr = player[3][cnt].split("/");
-					player[3][cnt] = tmpstr[3];
-				}
-			} else {
-				tmpstr = [nocard_img];
-				player[3] = tmpstr;
-			}
-			
-			// カードのレベルを取得
-			card_chk = [];
-			tmpstr = src_ary[0].split(mtc_detail_cardblock);
-			for(cnt = 0; cnt < 8; cnt++){
-				// LV MAXチェック
-				var chkstr = tmpstr[cnt+1].match(mtc_detail_cardblock_lv_max);
-				if(chkstr != null){
-					card_chk[cnt] = "MAX";
-				} else {
-					chkstr = tmpstr[cnt+1].match(mtc_detail_cardblock_lv);
-					if(chkstr != null){
-						card_chk[cnt] = tagsplit(chkstr[0]);
-					} else {
-						card_chk[cnt] = "0";
-					}
-				}
-			}
-			player[4] = card_chk;
-			
-			// プレイヤーカード情報を格納
-			result_ary[25] = player;
-			
-			// COMプレイヤーと使用キャストの確認
-			for(cnt = 0; cnt < 7; cnt++){
-				if(cnt < 3){
-					chkreg = new RegExp("id=\"friend_" + cnt + "\"\\s*com=\"false\"");
-				} else {
-					var enemy_cnt = cnt - 3
-					chkreg = new RegExp("id=\"enemy_" + enemy_cnt + "\"\\s*com=\"false\"");
-				}
-				if(src_ary[1].match(chkreg) == null){
-					comchk[cnt] = 1;
-				} else {
-					comchk[cnt] = 0;
-				}
-			}
-			
-			// 他プレイヤーのための分割
-			tmp_ary = src_ary[1].split("match_detail_member_pop");
-			var player_cnt = 0;
-			
-			// 他プレイヤーのデータを取得
-			for(cnt = 0; cnt < 7; cnt++){
-				var member_tmp = [];
-				
-				// COMフラグの挿入
-				member_tmp[0] = comchk[cnt];
-				// COMでないなら取得を行う
-				if(member_tmp[0] == 0){
-					player_cnt++;
-					// キャスト画像URL
-					tmpstr = tmp_ary[player_cnt].match(mtc_detail_cast).toString().split("/");
-					member_tmp[1] = tmpstr[2].toString();
-					// プレイヤー名
-					tmpstr = tmp_ary[player_cnt].match(mp_mydata_name);
-					member_tmp[2] = tagsplit(tmpstr[0]);
-					// 都道府県
-					tmpstr = tmp_ary[player_cnt].match(mp_mydata_location);
-					member_tmp[3] = tagsplit(tmpstr[0]);
-					// 装備情報
-					// スキルカード
-					var eqary= [];
-					tmpstr = tmp_ary[player_cnt].match(mtc_detail_skill);
-					if(tmpstr != null){
-						for(var eqcnt = 0; eqcnt < tmpstr.length; eqcnt++){
-							var eqstr = tmpstr[eqcnt].toString().split("/");
-							eqary[eqcnt] = eqstr[3].toString();
-						}
-						while(eqary.length < 4){
-							eqary.push(nocard_img);
-						}
-						member_tmp[4] = eqary;
-					} else {
-						tmpstr = [nocard_img, nocard_img, nocard_img, nocard_img];
-						member_tmp[4] = tmpstr;
-					}
-					// アシストカード
-					var eqary= [];
-					tmpstr = tmp_ary[player_cnt].match(mtc_detail_assist);
-					if(tmpstr != null){
-						for(var eqcnt = 0; eqcnt < tmpstr.length; eqcnt++){
-							var eqstr = tmpstr[eqcnt].toString().split("/");
-							eqary[eqcnt] = eqstr[3].toString();
-						}
-						while(eqary.length < 3){
-							eqary.push(nocard_img);
-						}
-						member_tmp[5] = eqary;
-					} else {
-						tmpstr = [nocard_img, nocard_img, nocard_img];
-						member_tmp[5] = tmpstr;
-					}
-					// ソウルカード
-					var eqary= [];
-					tmpstr = tmp_ary[player_cnt].match(mtc_detail_soul);
-					if(tmpstr != null){
-						for(var eqcnt = 0; eqcnt < tmpstr.length; eqcnt++){
-							var eqstr = tmpstr[eqcnt].toString().split("/");
-							eqary[eqcnt] = eqstr[3].toString();
-						}
-						member_tmp[6] = eqary;
-					} else {
-						tmpstr = [nocard_img];
-						member_tmp[6] = tmpstr;
-					}
-					
-					// カードのレベルを取得
-					card_chk = [];
-					tmpstr = tmp_ary[player_cnt].split(mtc_detail_m_cardblock);
-					for(var lvcnt = 0; lvcnt < 8; lvcnt++){
-						var chkstr = tmpstr[lvcnt+1].match(mtc_detail_cardblock_lv_max);
-						if(chkstr != null){
-							card_chk[lvcnt] = "MAX";
-						} else {
-							var chkstr = tmpstr[lvcnt+1].match(mtc_detail_cardblock_lv);
-							if(chkstr != null){
-								card_chk[lvcnt] = tagsplit(chkstr[0]);
-							} else {
-								card_chk[lvcnt] = "0";
-							}
-						}
-					}
-					member_tmp[7] = card_chk;
-					
-					// パートナー値の取得
-					if(ball_flg == 0){
-						tmpstr = tmp_ary[player_cnt].match(mtc_detail_m_with_num);
-					} else {
-						tmpstr = tmp_ary[player_cnt].match(ball_detail_m_with_num);
-					}
-					if(tmpstr == null){
-						// 敵チームは空欄
-						member_tmp[8] = "";
-						member_tmp[9] = "";
-					} else {
-						tmpstr = tmpstr[0].toString().replace(/.*\(/, "").replace(/\).*/, "").replace(/\"/g, "").split(",");
-						member_tmp[8] = tmpstr[0];
-						member_tmp[9] = tmpstr[1];
-					}
-					
-				} else {
-					// COMのとき
-					member_tmp[1] = com_img;
-					member_tmp[2] = "COM";
-				}
-				other_member[cnt] = member_tmp;
-			}
-			result_ary[26] = other_member;
-			
-			// 結果を格納
-			result_battle[battle_cnt] = result_ary;
-			battle_cnt++;
-			
-		} catch(e) {
-			errstr += "\n" + matchdate_ary[(battle_cnt + skip_battle)].innerHTML;
-			skip_battle++;
-			return;
-		}
 	}
 }
 /*
@@ -1900,7 +1923,6 @@ function select_fun(getno){
 			syukei(get_date[0], 1);
 			hyouji();
 			alert(get_date[0] + "の試合は" + battle_cnt + "件です。");
-			betatest_flg = 1;
 		} else {
 			return;
 		}
@@ -2072,7 +2094,6 @@ function select_fun(getno){
 				hyouji();
 				
 				alert(lsadd_cnt + "件のデータを保存しました。\n" + battle_cnt + "件のデータの集計データを表示しています。\n\n" + "New:" + lsdata_getnew + "\nOld:" + lsdata_getold + "\n保存件数上限：" + data_max);
-				betatest_flg = 1;
 			} else {
 				alert("ブラウザのローカルストレージ機能が使えないため、保存が行えません。");
 				return;
@@ -2096,7 +2117,7 @@ function select_fun(getno){
 			alert(lsdata_getcnt + "件のデータを削除しました。");
 		}
 	} else if(getno == 10){
-		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/2/7です。\n蓬莱の玉の枝オプション機能の表示方法を変更しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/2/7です。\nページの読み込み処理を変更し、処理時間を短縮しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
 	}
 }
 
@@ -2249,4 +2270,6 @@ function syukei_reset(){
 	match_cast_result = [];
 	match_cast_role = [];
 	match_cast_img = [];
+	
+	betatest_flg = 1;
 }
