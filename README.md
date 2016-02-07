@@ -22,7 +22,7 @@ javascript:(function(d,s){s=d.createElement('script');s.src='https://rawgit.com/
 ```
 ↓最近の更新で使えなくなった場合、こちらをお試しください。また、twitterアカウント宛に連絡いただけると助かります。
 ```
-javascript:(function(d,s){s=d.createElement('script');s.src='https://rawgit.com/wlw-bookmarklet/matchlog/master/honkide_20151226.js';d.body.appendChild(s);})(document)
+javascript:(function(d,s){s=d.createElement('script');s.src='https://rawgit.com/wlw-bookmarklet/matchlog/master/honkide_20160207.js';d.body.appendChild(s);})(document)
 ```
 
 　登録したブックマークレットを、対戦履歴ページ（画像を参照）で実行してください。
@@ -63,6 +63,7 @@ twitter：https://twitter.com/wlw_honkideya<br>
 メールフォーム(サイズ上限はありますが、ファイル添付可)：http://form1.fc2.com/form/?id=cf37da25833d8e10
 
 #####修正履歴：
+2016/02/07 対戦履歴の読み込み方法を変更し、処理の高速化を試みました。<br>
 2016/02/07 オプション機能の蓬莱の玉の枝の表示方法を変更しました。<br>
 2016/02/01 最新日のみ集計実行時、ランキングデータが正しく表示されない不具合を修正しました。<br>
 2016/01/31 最新日のみ集計実行時、チーム構成目安の値が正しくなくなる不具合を修正。<br>
