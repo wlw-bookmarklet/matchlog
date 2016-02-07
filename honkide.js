@@ -202,7 +202,7 @@ var errmsg = [
 // 本処理
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
-	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n2/7に読み込み処理を変更した影響で動かなくなった場合は、\nお手数ですがtwitterアカウント「@wlw_honkideya」かメールフォームへご連絡お願いします。\n最終更新日 2016/2/7");
+	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n2/7に読み込み処理を変更した影響で動かなくなった場合は、\nお手数ですがtwitterアカウント「@wlw_honkideya」かメールフォームへご連絡お願いします。\n最終更新日 2016/2/8");
 	
 	// エラー表示用の日付取得
 	try{
@@ -275,6 +275,13 @@ function getbattle(src_txt, ary_no){
 		// ログイン済みかのチェック
 		if(src_txt.match("ログインフォーム")){
 			errnum = 4;
+			skip_battle++;
+			return;
+		}
+		// サーバーメンテナンス中でないかのチェック
+		if(src_txt.match("現在サーバーメンテナンス中です。")){
+			errnum = 3;
+			skip_battle++;
 			return;
 		}
 		
@@ -595,7 +602,12 @@ function getbattle(src_txt, ary_no){
 	} finally {
 		// 全件読み込みが終了したら後続処理へ
 		if(matchurl_cnt == battle_cnt + skip_battle){
-			compload();
+			// エラーチェック
+			if(errnum != 0){
+				end_msg();
+			} else {
+				compload();
+			}
 		}
 	}
 }
@@ -658,6 +670,10 @@ function compload(){
 		hyouji();
 	}
 	
+	end_msg();
+}
+
+function end_msg(){
 	// 終了メッセージ
 	if(skip_battle != 0 && battle_cnt != 0 && errnum == 0){
 		errnum = 10;
@@ -668,6 +684,7 @@ function compload(){
 		alert("処理終了　エラー番号:" + errnum + "\n" + errmsg[errnum] + "\n\n" + errstr);
 	}
 }
+
 /*
 // カードリスト取得処理
 function cardlistget(){
@@ -2117,7 +2134,7 @@ function select_fun(getno){
 			alert(lsdata_getcnt + "件のデータを削除しました。");
 		}
 	} else if(getno == 10){
-		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/2/7です。\nページの読み込み処理を変更し、処理時間を短縮しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/2/8です。\nページの読み込み処理を変更し、処理時間を短縮しました。\nログイン切れ時のエラーを拾えていなかったため、処理を追加しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
 	}
 }
 
