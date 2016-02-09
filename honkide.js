@@ -202,7 +202,7 @@ var errmsg = [
 // 本処理
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
-	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n2/7に読み込み処理を変更した影響で動かなくなった場合は、\nお手数ですがtwitterアカウント「@wlw_honkideya」かメールフォームへご連絡お願いします。\n最終更新日 2016/2/8");
+	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n2/7に読み込み処理を変更した影響で動かなくなった場合は、\nお手数ですがtwitterアカウント「@wlw_honkideya」かメールフォームへご連絡お願いします。\n最終更新日 2016/2/9");
 	
 	// エラー表示用の日付取得
 	try{
@@ -234,6 +234,12 @@ if( urlchk() ){
 		if(errnum != 0){
 			break;
 		}
+	}
+	
+	// 試合が取得できなかった場合
+	if(matchurl_cnt == 0){
+		errnum = 2;
+		end_msg();
 	}
 } else {
 	alert("ﾅﾝﾃﾞｯ!!");
@@ -822,6 +828,11 @@ function hyouji(){
 		option_asi.value = 4;
 		option_asi.innerHTML = "月に叢雲(ファイターに蓬莱)";
 		selecttest.appendChild(option_asi);
+		
+		var option_role = document.createElement("option");
+		option_role.value = 11;
+		option_role.innerHTML = "ｱﾀｰｯｸ!!(ファイター数別勝率)";
+		selecttest.appendChild(option_role);
 		
 		if(ball_flg == 0){
 			var option_sal = document.createElement("option");
@@ -1957,7 +1968,7 @@ function select_fun(getno){
 		var asi_ary2 = team_result(asi_name2, 1);
 		var asi_ary3 = team_result(asi_name3, 1);
 		
-		if(asi_ary1 != false && asi_ary2 != false){
+		if(asi_ary1 != false && asi_ary2 != false && asi_ary3 != false){
 			// 結果表示
 			var optpos = document.getElementById("gameNode");
 			
@@ -1997,6 +2008,8 @@ function select_fun(getno){
 			
 			optNode.appendChild(optInner);
 			optpos.parentNode.insertBefore(optNode, optpos);
+		} else {
+			alert("取得に失敗しました。");
 		}
 	} else if(getno == 8){
 		// 絞った状態で保存は止める
@@ -2134,7 +2147,9 @@ function select_fun(getno){
 			alert(lsdata_getcnt + "件のデータを削除しました。");
 		}
 	} else if(getno == 10){
-		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/2/8です。\nページの読み込み処理を変更し、処理時間を短縮しました。\nログイン切れ時のエラーを拾えていなかったため、処理を追加しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/2/9です。\nファイター数別の勝率計算をオプション機能に追加しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+	} else if(getno == 11){
+		role_win("F");
 	}
 }
 
@@ -2261,6 +2276,116 @@ function level_senkou(get_level, get_cast){
 	} else {
 		return;
 	}
+}
+
+// ファイターの人数による勝率
+function role_win(select_role){
+	var role_result_win = [0, 0, 0, 0, 0];
+	var role_result_lose = [0, 0, 0, 0, 0];
+	var role_result_hyouji = ["", "", "", "", ""];
+	var role_name = "";
+	
+	// ロール名変換
+	if(select_role == "F"){
+		role_name = "ファイター";
+	} else if(select_role == "A") {
+		role_name = "アタッカー";
+	} else if(select_role == "S") {
+		role_name = "サポーター";
+	} else {
+		alert("取得できないロールが指定されました。");
+		return;
+	}
+	alert("注意：テスト機能のため、結果や動作のチェックが甘いです。\n" + role_name + "の人数別勝率を表示します。\n舞闘会履歴向けの機能です。");
+	
+	for(var cnt = 0; cnt < battle_cnt; cnt++){
+		var role_cnt_team = 0;
+		var role_cnt_enemy = 0;
+		// プレイヤーを集計
+		for(var cast_chk = 0; cast_chk < player_cast_img.length; cast_chk++){
+			if(player_cast_img[cast_chk].src.match(result_battle[cnt][5])){
+				if(player_cast_role[cast_chk] == select_role){
+					role_cnt_team++;
+				}
+				break;
+			}
+		}
+		
+		// マッチングしたキャストを集計
+		// 味方チームを集計
+		for(var cast_pos = 0; cast_pos < 3; cast_pos++){
+			// COMを除外
+			if(result_battle[cnt][26][cast_pos][0] == 1){
+				break;
+			}
+			for(var cast_chk = 0; cast_chk < match_cast_img.length; cast_chk++){
+				if(match_cast_img[cast_chk].src.match(result_battle[cnt][26][cast_pos][1])){
+					if(match_cast_role[cast_chk] == select_role){
+						role_cnt_team++;
+					}
+					break;
+				}
+			}
+		}
+		
+		// 敵チーム集計
+		for(var cast_pos = 3; cast_pos < 7; cast_pos++){
+			if(result_battle[cnt][26][cast_pos][0] == 1){
+				break;
+			}
+			for(var cast_chk = 0; cast_chk < match_cast_img.length; cast_chk++){
+				if(match_cast_img[cast_chk].src.match(result_battle[cnt][26][cast_pos][1])){
+					if(match_cast_role[cast_chk] == select_role){
+						role_cnt_enemy++;
+					}
+					break;
+				}
+			}
+		}
+		
+		// 勝敗取得
+		if(result_battle[cnt][9] == "win"){
+			role_result_win[role_cnt_team]++;
+			role_result_lose[role_cnt_enemy]++;
+		} else {
+			role_result_win[role_cnt_enemy]++;
+			role_result_lose[role_cnt_team]++;
+		}
+	}
+	// 表示用集計
+	for(var cnt = 0; cnt < role_result_hyouji.length; cnt++){
+		if(role_result_win[cnt] + role_result_lose[cnt] != 0){
+			role_result_hyouji[cnt] = Math.round((role_result_win[cnt] / (role_result_win[cnt] + role_result_lose[cnt]))*100) + "%(" + (role_result_win[cnt] + role_result_lose[cnt]) + "チーム)";
+		} else {
+			role_result_hyouji[cnt] = "対象チームなし";
+		}
+	}
+	
+	// 結果表示
+	var optpos = document.getElementById("gameNode");
+	
+	optNode = document.createElement("div");
+	optNode.className = "frame02_1";
+	optNode.style.marginTop = "72px";
+	optNode.style.marginBottom = frame02_margin_bot;
+	
+	optInner = document.createElement("div");
+	optInner.className = "frame_inner";
+	
+	var opttitle = document.createElement("div");
+	opttitle.className = "frame02_1_title";
+	opttitle.innerHTML = role_name + "人数別勝率";
+	optNode.appendChild(opttitle);
+	
+	addNode("ファイター人数", "勝率(対象チーム数)", 0, "opt");
+	addNode("0人", role_result_hyouji[0], 1, "opt");
+	addNode("1人", role_result_hyouji[1], 2, "opt");
+	addNode("2人", role_result_hyouji[2], 3, "opt");
+	addNode("3人", role_result_hyouji[3], 4, "opt");
+	addNode("4人", role_result_hyouji[4], 5, "opt");
+	
+	optNode.appendChild(optInner);
+	optpos.parentNode.insertBefore(optNode, optpos);
 }
 
 // 結果を再集計する時に使用する
