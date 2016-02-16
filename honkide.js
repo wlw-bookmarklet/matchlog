@@ -178,6 +178,7 @@ var skillcnt_ary = [];
 var cast_ary = [];
 var castcardimg_ary = [];
 var castcardcnt_ary = [];
+var nodetitle_text = "試合結果(平均データ)";
 
 // テスト処理用
 var betatest_flg = 0;
@@ -189,6 +190,7 @@ var clickimg_opt_num = 5;
 var imgNode_opt_num = [];
 var set_level_opt = 0;
 var set_cast_opt = "";
+var map_list = [];
 
 // エラー用変数
 var errstr = "";
@@ -197,7 +199,7 @@ var errmsg = [
 "正常に処理されました。\n"
 ,"ブックマークレットが既に実行済みです。\n複数回起動した場合、読み込み処理に異常が発生します。\n再度表示したい場合は、一度ページを更新してからブックマークレットを再実行してください。\nまた、この状態で保存は行わないでください。"
 ,"対戦履歴の取得件数が0件でした。\n対戦履歴が存在していないか、\n対戦履歴詳細のURLが変更されて読み込めなくなった可能性があります。\nまた、サーバーメンテナンス中にも発生します。"
-,"カードデータ呼び出しエラーです。\nまた、サーバーメンテナンス中にも発生します。"
+,"通信エラーが発生しました。\nサーバーメンテナンス中のため読み込みできません。"
 ,"通信エラーが発生しました。\nログインが有効ではなくなっています、トップページからログインし直してみてください。"
 ,"通信エラーが発生しました。\n対戦履歴詳細ページへのアクセスに失敗しました。\n回線の安定している状態で再度実行してみてください。"
 ,"キャストデータの初期化処理時にエラーが発生しました。\n試合結果が正常に取得できなかったか、想定外のデータになっている可能性があります。"
@@ -210,7 +212,8 @@ var errmsg = [
 // 本処理
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
-	alert("このアラートを閉じるとデータ取得を開始します。\n読み込みには時間がかかりますのでしばらくお待ちください。\n2/7に読み込み処理を変更した影響で動かなくなった場合は、\nお手数ですがtwitterアカウント「@wlw_honkideya」かメールフォームへご連絡お願いします。\n最終更新日 2016/2/13");
+	// 実行前のアラート
+	alert("このアラートを閉じるとデータ取得を開始します。\n　///お知らせ///\n・舞踏会履歴でも実行できます(保存は不可)\n・2/7に読み込み処理を変更した影響で動かなくなった場合は、\nお手数ですがtwitterアカウント「@wlw_honkideya」かメールフォームへご連絡お願いします。\n・最終更新日 2016/2/16");
 	
 	// エラー表示用の日付取得
 	try{
@@ -243,9 +246,10 @@ if( urlchk() ){
 			break;
 		}
 	}
-	
-	// 試合が取得できなかった場合
-	if(matchurl_cnt == 0){
+	if(errnum != 0){
+		end_msg();
+	} else if(matchurl_cnt == 0){
+		// 試合が取得できなかった場合
 		errnum = 2;
 		end_msg();
 	}
@@ -627,9 +631,9 @@ function getbattle(src_txt, ary_no){
 }
 
 // 試合データ取得後処理
-function compload(){
+function compload(getstr, getmode){
 	// 試合が取得できなかった場合
-	if(battle_cnt == 0 && errnum == 0){
+	if(battle_cnt == 0 && errnum == 0 && getmode == undefined){
 		errnum = 2;
 	}
 	
@@ -642,6 +646,7 @@ function compload(){
 			}
 		}
 	}
+	battle_cnt = result_battle.length;
 	
 	/*
 	if(errnum == 0){
@@ -658,7 +663,7 @@ function compload(){
 	}
 	*/
 	if(errnum == 0){
-		syukei();
+		syukei(getstr, getmode);
 	}
 	
 	// エラーが無ければ表示処理
@@ -689,7 +694,6 @@ function compload(){
 		}
 		hyouji();
 	}
-	
 	end_msg();
 }
 
@@ -731,9 +735,25 @@ function cardlistget(){
 function syukei(strdata, mode){
 	var skip_cnt = 0;
 	var suminichk_flg = 0;
+	map_list = [];
 	
 	// 試合数だけ集計処理を行う
-	for(cnt = 0; cnt < battle_cnt; cnt++){
+	for(cnt = 0; cnt < result_battle.length; cnt++){
+		// マップリストの作成
+		if(map_list.length == 0){
+			map_list.push(result_battle[cnt][4]);
+		} else {
+			var map_chk = 0;
+			for(var mapcnt = 0; mapcnt < map_list.length; mapcnt++){
+				if(map_list[mapcnt] == result_battle[cnt][4]){
+					map_chk = 1;
+					break;
+				}
+			}
+			if(map_chk == 0){
+				map_list.push(result_battle[cnt][4]);
+			}
+		}
 		// 集計日時指定のチェック
 		if(mode == 1){
 			if(result_battle[cnt][0].toString().match(strdata.toString()) ){
@@ -801,7 +821,6 @@ function syukei(strdata, mode){
 			break;
 		}
 	}
-	
 	battle_cnt -= skip_cnt;
 }
 
@@ -828,10 +847,12 @@ function hyouji(){
 		option_now.innerHTML = "わかったよー！(最新日のみ集計)";
 		selecttest.appendChild(option_now);
 		
-		var option_map = document.createElement("option");
-		option_map.value = 2;
-		option_map.innerHTML = "そっちね！(未実装)";
-		selecttest.appendChild(option_map);
+		if(ball_flg == 0){
+			var option_map = document.createElement("option");
+			option_map.value = 2;
+			option_map.innerHTML = "そっちね！(マップ別集計)";
+			selecttest.appendChild(option_map);
+		}
 		
 		var option_lv5 = document.createElement("option");
 		option_lv5.value = 3;
@@ -867,6 +888,10 @@ function hyouji(){
 		
 		inspos.parentNode.insertBefore(selecttest, inspos);
 		
+		if(battle_cnt < 1){
+			return;
+		}
+		
 		// 試合結果表示
 		gameNode = document.createElement("div");
 		gameNode.className = "frame02_1";
@@ -876,7 +901,7 @@ function hyouji(){
 		
 		nodetitle1 = document.createElement("div");
 		nodetitle1.className = "frame02_1_title";
-		nodetitle1.innerHTML = "試合結果（平均データ）";
+		nodetitle1.innerHTML = nodetitle_text;
 		gameNode.appendChild(nodetitle1);
 		
 		// 使用キャスト画像を表示
@@ -1078,7 +1103,7 @@ function hyouji(){
 		}
 		
 		// キャストロール比率
-		addNode("チーム構成目安", "自身を含む", 10, "cast");
+		addNode("チーム構成目安", "", 10, "cast");
 		addNode("ファイター", "", 11, "cast");
 		addNode("アタッカー", "", 12, "cast");
 		addNode("サポーター", "", 13, "cast");
@@ -1556,6 +1581,7 @@ function matchcast_setimg(match_casturl, match_castno){
 			// キャスト総数を計算
 			var sum_castroll = match_role_ary[0] + match_role_ary[1] + match_role_ary[2];
 			// ロールに表示
+			cast_ary[10].innerHTML = "対象キャスト数:" + sum_castroll;
 			cast_ary[11].innerHTML = Math.floor(match_role_ary[0] * 1000 / sum_castroll) / 10 + "%";
 			cast_ary[12].innerHTML = Math.floor(match_role_ary[1] * 1000 / sum_castroll) / 10 + "%";
 			cast_ary[13].innerHTML = Math.floor(match_role_ary[2] * 1000 / sum_castroll) / 10 + "%";
@@ -1963,18 +1989,57 @@ function select_fun(getno){
 		}
 		if(window.confirm("注意：テスト機能のため、結果や動作のチェックが甘いです。\n最新の入国した日を対象に集計処理します。\n一日に20戦以上した場合は変わりません。")){
 			// 集計処理のリセット
-			syukei_reset();
+			syukei_reset("試合結果(最新日)");
 			
 			// 最新日付の取得
 			var get_date = result_battle[0][0].toString().split(" ");
-			syukei(get_date[0], 1);
-			hyouji();
-			alert(get_date[0] + "の試合は" + battle_cnt + "件です。");
+			compload(get_date[0], 1);
 		} else {
 			return;
 		}
 	} else if(getno == 2){
-		alert("あーん、ごめんね！");
+		if(window.confirm("注意：テスト機能のため、結果や動作のチェックが甘いです。\nマップを指定して集計処理を行います。\n保存＆読込機能との併用向け機能です。")){
+			var optpos = document.getElementById("gameNode");
+			
+			optNode = document.createElement("div");
+			optNode.className = "frame02_1";
+			optNode.style.marginTop = "72px";
+			optNode.style.marginBottom = frame02_margin_bot;
+			
+			optInner = document.createElement("div");
+			optInner.className = "frame_inner";
+			
+			opttitle = document.createElement("div");
+			opttitle.className = "frame02_1_title";
+			opttitle.innerHTML = "マップ別集計";
+			optNode.appendChild(opttitle);
+			
+			var selectmap = document.createElement("select");
+			selectmap.className = "select02";
+			selectmap.setAttribute("onchange", "map_search(this.value)");
+			
+			var option_map = document.createElement("option");
+			option_map.value = "";
+			option_map.innerHTML = "マップを選択してください。";
+			selectmap.appendChild(option_map);
+			
+			for(var mapcnt = 0; mapcnt < map_list.length; mapcnt++){
+				var option_map = document.createElement("option");
+				option_map.value = map_list[mapcnt];
+				option_map.innerHTML = map_list[mapcnt];
+				selectmap.appendChild(option_map);
+			}
+			var option_map = document.createElement("option");
+			option_map.value = "全マップ";
+			option_map.innerHTML = "すべてのマップ";
+			selectmap.appendChild(option_map);
+			
+			optInner.appendChild(selectmap);
+			optNode.appendChild(optInner);
+			optpos.parentNode.insertBefore(optNode, optpos);
+		} else {
+			return;
+		}
 	} else if(getno == 3){
 		level_senkou_hyouji();
 	} else if(getno == 4){
@@ -2131,7 +2196,7 @@ function select_fun(getno){
 				localStorage.setItem(lscnt_name, lsdata_getcnt);
 				
 				// リセット処理
-				syukei_reset();
+				syukei_reset("試合結果(平均データ)");
 				
 				// データの再構成、同じ形にするために最新データから入れる
 				battle_cnt = lsdata_getcnt;
@@ -2166,7 +2231,7 @@ function select_fun(getno){
 			alert(lsdata_getcnt + "件のデータを削除しました。");
 		}
 	} else if(getno == 10){
-		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/2/13です。\nオプション機能の表示を統一しました。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/2/16です。\nマップ別集計機能を追加しました。\n保存＆読込機能を使用して、20件以上の試合数を処理する場合向けです。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
 	} else if(getno == 11){
 		role_win("F");
 	}
@@ -2507,14 +2572,38 @@ function role_win(select_role){
 	optpos.parentNode.insertBefore(optNode, optpos);
 }
 
+// マップ選択集計関数
+function map_search(get_map){
+	if(get_map == ""){
+		return;
+	}
+	
+	// オプション表示があったら削除
+	try{
+		inspos.parentNode.removeChild(optNode);
+	} catch(e) {
+		
+	}
+	syukei_reset( "試合結果(" + get_map + ")" );
+	if(get_map == "全マップ"){
+		compload();
+	} else {
+		compload(get_map, 2);
+	}
+}
+
 // 結果を再集計する時に使用する
-function syukei_reset(){
+function syukei_reset(gettext){
 	// 表示の削除処理
-	inspos.parentNode.removeChild(textNode);
-	inspos.parentNode.removeChild(gameNode);
-	inspos.parentNode.removeChild(skillNode);
-	inspos.parentNode.removeChild(castNode);
-	inspos.parentNode.removeChild(selecttest);
+	try{
+		inspos.parentNode.removeChild(textNode);
+		inspos.parentNode.removeChild(selecttest);
+		inspos.parentNode.removeChild(gameNode);
+		inspos.parentNode.removeChild(skillNode);
+		inspos.parentNode.removeChild(castNode);
+	} catch(e) {
+		
+	}
 	
 	// 数値の初期化
 	cast_cnt = 0;
@@ -2531,6 +2620,7 @@ function syukei_reset(){
 	match_cast_result = [];
 	match_cast_role = [];
 	match_cast_img = [];
+	nodetitle_text = gettext;
 	
 	betatest_flg = 1;
 }
