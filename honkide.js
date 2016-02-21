@@ -117,6 +117,8 @@ var match_cast_sum = 0;
 var match_cast_cnt = 0;
 // 舞闘会モードフラグ
 var ball_flg = 0;
+// 戦闘履歴詳細フラグ
+var detail_flg = 0;
 
 // 試合結果を配列で格納する(※lengthで試合数を取らず、battle_cntを使用すること)
 var result_battle = [];
@@ -211,7 +213,7 @@ var errmsg = [
 // 開始URLをチェックし、対戦履歴ページなら処理を開始する
 if( urlchk() ){
 	// 実行前のアラート
-	alert("このアラートを閉じるとデータ取得を開始します。\n　///お知らせ///\n・舞踏会履歴でも実行できます(保存は不可)\n・2/7に読み込み処理を変更した影響で動かなくなった場合は、\nお手数ですがtwitterアカウント「@wlw_honkideya」かメールフォームへご連絡お願いします。\n・最終更新日 2016/2/19");
+	alert("このアラートを閉じるとデータ取得を開始します。\n　///お知らせ///\n・舞踏会履歴でも実行できます(保存は不可)\n・2/7に読み込み処理を変更した影響で動かなくなった場合は、\nお手数ですがtwitterアカウント「@wlw_honkideya」かメールフォームへご連絡お願いします。\n・最終更新日 2016/2/21");
 	
 	// エラー表示用の日付取得
 	try{
@@ -254,6 +256,8 @@ if( urlchk() ){
 		errnum = 2;
 		end_msg();
 	}
+} else if (detail_flg == 1){
+	urldetail();
 } else {
 	alert("ﾅﾝﾃﾞｯ!!");
 }
@@ -1831,6 +1835,9 @@ function urlchk(){
 	} else if(location.href.toString() == ballurl1){
 		ball_flg = 1;
 		return true;
+	} else if(location.href.toString().match(/matchlogdetail/i)){
+		detail_flg = 1;
+		return false;
 	} else {
 		alert("実行するページのアドレスが一致しません。\n【WLW】対戦履歴(全国対戦):Wonder.NET ワンダーランドウォーズ\n「https://wonderland-wars.net/matchlog.html」\n上記のページで実行してください。");
 		return false;
@@ -2216,7 +2223,7 @@ function select_fun(getno){
 			alert(lsdata_getcnt + "件のデータを削除しました。");
 		}
 	} else if(getno == 10){
-		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/2/19です。\n使用MPの項目を追加しました。\n計算は現在のスキル消費MPに依存します。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
+		alert("ﾅﾝﾃﾞｯ!!\n最新の修正は2016/2/21です。\n対戦履歴詳細ページでの、名前隠し機能を追加しました。\n名前を隠してスクリーンショットを撮りたい際などにお使いください。\n詳しくはtwitterアカウント「@wlw_honkideya」をご覧ください。");
 	} else if(getno == 11){
 		role_win("F");
 	}
@@ -2698,6 +2705,79 @@ function getskilldata(getimg, mode){
 		return rtn;
 	}catch(e){
 		return 0;
+	}
+}
+
+// 戦闘履歴詳細での実行
+function urldetail(){
+	alert("対戦履歴詳細の以下のデータを隠します。\n・プレイヤーの店舗名と都道府県\n・マッチングプレイヤーの名前と都道府県\nプレイヤー名と一部の隠されたデータは、クリックorタップで表示切り替えできます。\n\n集計処理を行いたい場合は詳細ページではなく、対戦履歴ページで実行してください。");
+	try{
+		var mtc_member_ary = document.getElementsByClassName("mtc_detail_member_name");
+		var mp_location_ary = document.getElementsByClassName("mp_mydata_location");
+		var mtc_store_ary = document.getElementsByClassName("mtc_detail_store");
+		var mp_name_ary = document.getElementsByClassName("mp_mydata_name");
+		
+		mtc_store_ary[0].style.opacity = 0;
+		mtc_store_ary[0].setAttribute("onclick", "detailclick(" + 0 + ", \"store\")");
+		
+		for(var cnt=0; cnt < mtc_member_ary.length; cnt++){
+			mtc_member_ary[cnt].style.opacity = 0;
+			//mtc_member_ary[cnt].setAttribute("onclick", "detailclick(" + cnt + ", \"member\")");
+		}
+		for(var cnt=0; cnt < mp_name_ary.length; cnt++){
+			mp_name_ary[cnt].setAttribute("onclick", "detailclick(" + cnt + ", \"name\")");
+			if(cnt == 0){
+				mp_name_ary[cnt].style.opacity = 1;
+				continue;
+			}
+			mp_name_ary[cnt].style.opacity = 0;
+		}
+		for(var cnt=0; cnt < mp_location_ary.length; cnt++){
+			mp_location_ary[cnt].setAttribute("onclick", "detailclick(" + cnt + ", \"location\")");
+			mp_location_ary[cnt].style.opacity = 0;
+		}
+	} catch(e) {
+		console.log(e);
+		alert("非表示処理に失敗しました。");
+	}
+}
+
+function detailclick(getno, cate){
+	try{
+		if(cate == "store"){
+			var mtc_store_ary = document.getElementsByClassName("mtc_detail_store");
+			if(mtc_store_ary[getno].style.opacity == 0){
+				mtc_store_ary[getno].style.opacity = 1;
+			} else {
+				mtc_store_ary[getno].style.opacity = 0;
+			}
+		} else if(cate == "member"){
+			var mtc_member_ary = document.getElementsByClassName("mtc_detail_member_name");
+			if(mtc_member_ary[getno].style.opacity == 0){
+				mtc_member_ary[getno].style.opacity = 1;
+			} else {
+				mtc_member_ary[getno].style.opacity = 0;
+			}
+			
+		} else if(cate == "name"){
+			var mp_name_ary = document.getElementsByClassName("mp_mydata_name");
+			if(mp_name_ary[getno].style.opacity == 0){
+				mp_name_ary[getno].style.opacity = 1;
+			} else {
+				mp_name_ary[getno].style.opacity = 0;
+			}
+			
+		} else if(cate == "location"){
+			var mp_location_ary = document.getElementsByClassName("mp_mydata_location");
+			if(mp_location_ary[getno].style.opacity == 0){
+				mp_location_ary[getno].style.opacity = 1;
+			} else {
+				mp_location_ary[getno].style.opacity = 0;
+			}
+		}
+	} catch(e) {
+		console.log(e);
+		alert("切り替え処理に失敗しました。");
 	}
 }
 
