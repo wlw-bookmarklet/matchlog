@@ -2418,7 +2418,7 @@ function level_senkou(get_level, get_cast){
 	}
 	// レベルを配列の位置に合わせる
 	var level_num = get_level - 2;
-	for(var cnt = 0; cnt < resule_battle.length; cnt++){
+	for(var cnt = 0; cnt < result_battle.length; cnt++){
 		if(battle_chk[cnt] == 0){
 			continue;
 		}
